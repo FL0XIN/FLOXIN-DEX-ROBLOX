@@ -129,96 +129,98 @@ window:SetTitle("Bulk Copier")
 local UIS = game:GetService("UserInputService")
 local VIEWPORT = (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize) or Vector2.new(1280,720)
 local isMobile = UIS.TouchEnabled
-local WIN_W = isMobile and math.clamp(math.floor(VIEWPORT.X * 0.92), 260, 400) or 400
-local WIN_H = isMobile and math.clamp(math.floor(VIEWPORT.Y * 0.72), 340, 520) or 460
+local WIN_W = isMobile and math.clamp(math.floor(VIEWPORT.X * 0.85), 240, 360) or 360
+local WIN_H = isMobile and math.clamp(math.floor(VIEWPORT.Y * 0.7), 300, 480) or 420
 window:Resize(WIN_W, WIN_H)
 BulkCopier.Window=window
 local content=window.GuiElems.Content
 
-local topBar=Instance.new("Frame")
-topBar.Parent=content
-topBar.Position=UDim2.new(0,0,0,0)
-topBar.Size=UDim2.new(1,0,0,30)
-topBar.BackgroundColor3=Color3.fromRGB(40,40,40)
-topBar.BorderSizePixel=0
+-- Toolbar (نفس ستايل Explorer)
+local toolBar=Instance.new("Frame")
+toolBar.Parent=content
+toolBar.Position=UDim2.new(0,0,0,0)
+toolBar.Size=UDim2.new(1,0,0,22)
+toolBar.BackgroundColor3=Settings.Theme.Main1
+toolBar.BorderSizePixel=0
 
-local rsBtn=Instance.new("TextButton")
-rsBtn.Parent=topBar
-rsBtn.Position=UDim2.new(0,4,0,3)
-rsBtn.Size=UDim2.new(0.48,-6,0,24)
-rsBtn.BackgroundColor3=Color3.fromRGB(60,90,140)
-rsBtn.Text="ReplicatedStorage"
-rsBtn.TextColor3=Color3.fromRGB(255,255,255)
-rsBtn.Font=Enum.Font.SourceSansBold
-rsBtn.TextSize=isMobile and 14 or 13
-rsBtn.AutoButtonColor=true
+-- زرين في التولبار
+local rsBtn=Lib.Button.new()
+rsBtn.Text="RS Only"
+rsBtn.Size=UDim2.new(0.5,-6,0,20)
+rsBtn.Position=UDim2.new(0,3,0,1)
+rsBtn.Parent=toolBar
 
-local allBtn=Instance.new("TextButton")
-allBtn.Parent=topBar
-allBtn.Position=UDim2.new(0.52,2,0,3)
-allBtn.Size=UDim2.new(0.48,-6,0,24)
-allBtn.BackgroundColor3=Color3.fromRGB(60,120,70)
-allBtn.Text="Copy Everything"
-allBtn.TextColor3=Color3.fromRGB(255,255,255)
-allBtn.Font=Enum.Font.SourceSansBold
-allBtn.TextSize=isMobile and 14 or 13
-allBtn.AutoButtonColor=true
+local allBtn=Lib.Button.new()
+allBtn.Text="Everything"
+allBtn.Size=UDim2.new(0.5,-6,0,20)
+allBtn.Position=UDim2.new(0.5,3,0,1)
+allBtn.Parent=toolBar
 
+-- فاصل رقيق تحت التولبار
+local line=Instance.new("Frame")
+line.Parent=content
+line.Position=UDim2.new(0,0,0,22)
+line.Size=UDim2.new(1,0,0,1)
+line.BackgroundColor3=Settings.Theme.Outline1
+line.BorderSizePixel=0
+
+-- قائمة السكرول
 local scroll=Instance.new("ScrollingFrame")
 scroll.Parent=content
-scroll.Position=UDim2.new(0,0,0,32)
-scroll.Size=UDim2.new(1,0,1,-56)
-scroll.BackgroundColor3=Color3.fromRGB(36,36,36)
+scroll.Position=UDim2.new(0,0,0,23)
+scroll.Size=UDim2.new(1,0,1,-46)
+scroll.BackgroundTransparency=1
 scroll.BorderSizePixel=0
 scroll.CanvasSize=UDim2.new(0,0,0,0)
 scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
-scroll.ScrollBarThickness=isMobile and 10 or 8
-scroll.ScrollBarImageColor3=Color3.fromRGB(90,90,90)
-scroll.ScrollingDirection=Enum.ScrollingDirection.Y
+scroll.ScrollBarThickness=isMobile and 8 or 6
+scroll.ScrollBarImageColor3=Color3.fromRGB(70,70,70)
 
-local lay=Instance.new("UIGridLayout")
+local lay=Instance.new("UIListLayout")
 lay.Parent=scroll
-lay.CellSize=UDim2.new(0.5,-6,0,isMobile and 40 or 32)
-lay.CellPadding=UDim2.new(0,4,0,4)
+lay.Padding=UDim.new(0,1)
 lay.SortOrder=Enum.SortOrder.LayoutOrder
-lay.HorizontalAlignment=Enum.HorizontalAlignment.Left
 
 local pad=Instance.new("UIPadding")
 pad.Parent=scroll
-pad.PaddingTop=UDim.new(0,6)
+pad.PaddingTop=UDim.new(0,4)
 pad.PaddingLeft=UDim.new(0,4)
 pad.PaddingRight=UDim.new(0,4)
+pad.PaddingBottom=UDim.new(0,4)
 
+-- شريط الحالة
 local statusLabel=Instance.new("TextLabel")
 statusLabel.Parent=content
 statusLabel.Position=UDim2.new(0,4,1,-22)
 statusLabel.Size=UDim2.new(1,-8,0,20)
 statusLabel.BackgroundTransparency=1
-statusLabel.Text="Tap a category to copy"
-statusLabel.TextColor3=Color3.fromRGB(200,200,200)
+statusLabel.Text="Tap a category to copy its paths"
+statusLabel.TextColor3=Settings.Theme.Text
+statusLabel.TextTransparency=0.4
 statusLabel.Font=Enum.Font.SourceSans
-statusLabel.TextSize=isMobile and 13 or 12
+statusLabel.TextSize=13
 statusLabel.TextXAlignment=Enum.TextXAlignment.Center
 statusLabel.TextTruncate=Enum.TextTruncate.AtEnd
 
-local function makeCatBtn(text,color,callback)
-    local btn=Instance.new("TextButton")
+-- ازرار الفئات بـ Lib.Button (نفس ثيم Dex)
+for i,s in ipairs(SCAN) do
+    local btn=Lib.Button.new()
+    btn.Text="  "..s[2]
+    btn.TextXAlignment=Enum.TextXAlignment.Left
+    btn.Size=UDim2.new(1,-6,0,isMobile and 28 or 24)
     btn.Parent=scroll
-    btn.BackgroundColor3=color
-    btn.Text=text
-    btn.TextColor3=Color3.fromRGB(255,255,255)
-    btn.Font=Enum.Font.SourceSansBold
-    btn.TextSize=isMobile and 13 or 12
-    btn.TextWrapped=true
-    btn.AutoButtonColor=true
-    btn.BorderSizePixel=0
-    local corner=Instance.new("UICorner",btn)
-    corner.CornerRadius=UDim.new(0,6)
-    btn.MouseButton1Click:Connect(function() pcall(callback) end)
-    return btn
+    local idx=i
+    btn.OnClick:Connect(function()
+        local b=scanAll()
+        local list=b[idx]
+        local paths={}
+        for j=1,#list do table.insert(paths,getPath(list[j])) end
+        table.sort(paths)
+        copyTxt(table.concat(paths,"\n"),#paths.." "..SCAN[idx][2])
+    end)
 end
 
-allBtn.MouseButton1Click:Connect(function()
+allBtn.OnClick:Connect(function()
     local b=scanAll()
     local out={}
     local total=0
@@ -233,7 +235,7 @@ allBtn.MouseButton1Click:Connect(function()
     copyTxt(table.concat(out,"\n"),total.." items")
 end)
 
-rsBtn.MouseButton1Click:Connect(function()
+rsBtn.OnClick:Connect(function()
     local b=scanAll()
     local out={}
     local total=0
@@ -254,25 +256,6 @@ rsBtn.MouseButton1Click:Connect(function()
     end
     copyTxt(table.concat(out,"\n"),total.." items RS")
 end)
-
-local COLORS = {
-    Color3.fromRGB(70,90,140),
-    Color3.fromRGB(120,80,140),
-    Color3.fromRGB(80,120,90),
-    Color3.fromRGB(140,90,70),
-    Color3.fromRGB(90,90,120),
-}
-
-for i,s in ipairs(SCAN) do
-    local btn=makeCatBtn(s[2], COLORS[((i-1)%#COLORS)+1], function()
-        local b=scanAll()
-        local list=b[i]
-        local paths={}
-        for j=1,#list do table.insert(paths,getPath(list[j])) end
-        table.sort(paths)
-        copyTxt(table.concat(paths,"\n"),#paths.." "..SCAN[i][2])
-    end)
-end
 
 end
 return BulkCopier
