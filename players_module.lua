@@ -17,6 +17,11 @@ local window, content
 local expanded = {}
 local localPlayer = service.Players.LocalPlayer
 
+-- الأيقونات (Material Icons sprite)
+local COPY_ICON_INDEX = 216   -- نسخ
+local EDIT_ICON_INDEX = 63    -- قلم
+local LOCAL_ICON_INDEX = 181  -- قفل/eye
+
 local function copy(t)
     local ok = false
     if env and env.setclipboard then pcall(function() env.setclipboard(t) ok=true end) end
@@ -25,253 +30,365 @@ local function copy(t)
     return ok
 end
 
--- scan leaderstats
 local function scanLeaderstats(p)
     local list = {}
     local ls = p:FindFirstChild("leaderstats")
     if not ls then return list end
     for _, c in ipairs(ls:GetChildren()) do
         if c:IsA("ValueBase") then
-            table.insert(list, {k = "  [LS] "..c.Name, v = tostring(c.Value), copy = tostring(c.Value)})
+            table.insert(list, {name=c.Name, inst=c, kind="leaderstats"})
         end
     end
     return list
 end
 
--- scan attributes of an instance
-local function scanAttrs(inst, prefix)
+local function scanAttrs(inst, prefix, kind)
     local list = {}
     local ok, attrs = pcall(function() return inst:GetAttributes() end)
     if not ok or not attrs then return list end
     for name, val in pairs(attrs) do
-        table.insert(list, {k = "  "..prefix..name, v = tostring(val), copy = tostring(val)})
+        table.insert(list, {name=name, inst=inst, attrName=name, kind=kind or "attr", prefix=prefix or ""})
     end
     return list
 end
 
--- scan player-specific folder in workspace
 local function findWorkspaceFolder(p)
-    local candidates = { p.Name, tostring(p.UserId), p.DisplayName }
-    for _, name in ipairs(candidates) do
+    for _, name in ipairs({p.Name, tostring(p.UserId), p.DisplayName}) do
         local f = workspace:FindFirstChild(name)
         if f then return f end
     end
-    return nil
 end
 
--- scan ReplicatedStorage player folder
 local function findRSFolder(p)
     local RS = game:GetService("ReplicatedStorage")
-    local candidates = { p.Name, tostring(p.UserId), p.DisplayName }
-    for _, name in ipairs(candidates) do
+    for _, name in ipairs({p.Name, tostring(p.UserId), p.DisplayName}) do
         local f = RS:FindFirstChild(name)
         if f then return f end
     end
-    return nil
 end
 
--- recursive count of descendants
 local function countDesc(inst, maxDepth)
     maxDepth = maxDepth or 4
-    local count = 0
+    local c = 0
     local function rec(o, d)
         if d > maxDepth then return end
-        for _, c in ipairs(o:GetChildren()) do
-            count = count + 1
-            if #c:GetChildren() > 0 then rec(c, d+1) end
+        for _, ch in ipairs(o:GetChildren()) do
+            c = c + 1
+            if #ch:GetChildren() > 0 then rec(ch, d+1) end
         end
     end
     rec(inst, 0)
-    return count
+    return c
 end
 
-local function buildInfo(p)
-    local out = {}
-    local function add(k, v, copyVal)
-        table.insert(out, {k=k, v=v, copy=copyVal or tostring(v)})
+-- تحديد نوع القيمة + قابلية التعديل
+local function valueInfo(inst, isAttr)
+    local t
+    if isAttr then
+        t = typeof(inst:GetAttribute(isAttr))
+    else
+        t = typeof(inst.Value)
+    end
+    local editable = (t == "number" or t == "string" or t == "boolean")
+    return t, editable
+end
+
+-- قراءة القيمة
+local function readVal(item)
+    if item.attrName then
+        return item.inst:GetAttribute(item.attrName)
+    elseif item.inst and item.inst.Value ~= nil then
+        return item.inst.Value
+    end
+    return nil
+end
+
+-- كتابة القيمة
+local function writeVal(item, newVal, typ)
+    if item.attrName then
+        item.inst:SetAttribute(item.attrName, newVal)
+    elseif item.inst then
+        item.inst.Value = newVal
+    end
+end
+
+-- parse الـ input حسب النوع
+local function parseInput(txt, typ)
+    if typ == "number" then
+        local n = tonumber(txt)
+        return n
+    elseif typ == "boolean" then
+        return txt:lower() == "true"
+    elseif typ == "string" then
+        return txt
+    end
+    return nil
+end
+
+-- نافذة تعديل القيمة
+local function openEditWindow(item, parentCard, onDone)
+    local typ, editable = valueInfo(item.inst, item.attrName)
+    if not editable then
+        return
     end
 
-    add("Name", p.Name)
-    add("Display", p.DisplayName or p.Name)
-    add("UserId", tostring(p.UserId), "user:"..p.UserId)
-    add("AccountAge", (function()
-        local ok, a = pcall(function() return p.AccountAge end)
-        return ok and (tostring(a).."d") or "?"
-    end)())
-    add("Membership", (function()
-        local ok, m = pcall(function() return p.MembershipType end)
-        return ok and tostring(m):gsub("Enum%.MembershipType%.","") or "None"
-    end)())
+    local old = readVal(item)
 
-    -- leaderstats
-    local ls = scanLeaderstats(p)
-    if #ls > 0 then
-        add("── leaderstats ──", "", "")
-        for _, item in ipairs(ls) do
-            table.insert(out, item)
-        end
-    end
+    local dlg = Instance.new("ScreenGui")
+    dlg.Name = "FLOXIN_Edit"
+    dlg.IgnoreGuiInset = true
+    dlg.ResetOnSpawn = false
+    dlg.DisplayOrder = 999999
+    Lib.ShowGui(dlg)
 
-    -- player attributes
-    local pAttrs = scanAttrs(p, "[P] ")
-    if #pAttrs > 0 then
-        add("── Player Attrs ──", "", "")
-        for _, item in ipairs(pAttrs) do
-            table.insert(out, item)
-        end
-    end
+    local f = Instance.new("Frame", dlg)
+    f.Size = UDim2.new(0, 280, 0, 240)
+    f.Position = UDim2.new(0.5, -140, 0.5, -120)
+    f.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    f.BorderSizePixel = 0
+    f.Active = true
+    f.Draggable = true
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 8)
+    local st = Instance.new("UIStroke", f); st.Color = Color3.fromRGB(30,30,30)
 
-    -- character data
-    local ch = p.Character
-    if ch then
-        add("── Character ──", "", "")
-        local hum = ch:FindFirstChildOfClass("Humanoid")
-        if hum then
-            add("  Health", math.floor(hum.Health).."/"..math.floor(hum.MaxHealth))
-            add("  WalkSpeed", tostring(math.floor(hum.WalkSpeed)))
-            add("  JumpPower", tostring(math.floor(hum.JumpPower or hum.UseJumpPower and hum.JumpPower or 0)))
-            add("  State", tostring(hum:GetState()):gsub("Enum%.HumanoidStateType%.",""))
-            add("  RigType", tostring(hum.RigType):gsub("Enum%.HumanoidRigType%.",""))
-        end
-        local hrp = ch:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local pos = hrp.Position
-            local vel = hrp.Velocity
-            add("  Position", string.format("%.0f, %.0f, %.0f", pos.X, pos.Y, pos.Z))
-            add("  Velocity", string.format("%.0f, %.0f, %.0f", vel.X, vel.Y, vel.Z))
-        end
+    local title = Instance.new("TextLabel", f)
+    title.Size = UDim2.new(1, -20, 0, 24)
+    title.Position = UDim2.new(0, 10, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Text = "Edit: "..item.name
+    title.TextColor3 = Color3.fromRGB(230,230,230)
+    title.Font = Enum.Font.SourceSansBold
+    title.TextSize = 14
+    title.TextXAlignment = Enum.TextXAlignment.Left
 
-        -- equipped tools
-        local equipped = {}
-        for _, c in ipairs(ch:GetChildren()) do
-            if c:IsA("Tool") then table.insert(equipped, c.Name) end
+    local typeLbl = Instance.new("TextLabel", f)
+    typeLbl.Size = UDim2.new(1, -20, 0, 14)
+    typeLbl.Position = UDim2.new(0, 10, 0, 32)
+    typeLbl.BackgroundTransparency = 1
+    typeLbl.Text = "Type: "..typ.."  ·  Old: "..tostring(old)
+    typeLbl.TextColor3 = Color3.fromRGB(150,150,155)
+    typeLbl.Font = Enum.Font.Code
+    typeLbl.TextSize = 11
+    typeLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local box = Instance.new("TextBox", f)
+    box.Size = UDim2.new(1, -20, 0, 30)
+    box.Position = UDim2.new(0, 10, 0, 52)
+    box.BackgroundColor3 = Color3.fromRGB(38,38,38)
+    box.BorderSizePixel = 0
+    box.Text = tostring(old)
+    box.TextColor3 = Color3.fromRGB(230,230,230)
+    box.Font = Enum.Font.Code
+    box.TextSize = 13
+    box.ClearTextOnFocus = false
+    box.TextXAlignment = Enum.TextXAlignment.Left
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
+    local bp = Instance.new("UIPadding", box)
+    bp.PaddingLeft = UDim.new(0, 6)
+
+    local warnLbl = Instance.new("TextLabel", f)
+    warnLbl.Size = UDim2.new(1, -20, 0, 60)
+    warnLbl.Position = UDim2.new(0, 10, 0, 90)
+    warnLbl.BackgroundColor3 = Color3.fromRGB(60,45,20)
+    warnLbl.Text = "⚠ التعديل يحاول يزامن مع السيرفر أولاً.\nلو اللعبة عندها حماية، التعديل هيفضل محلي\n(يظهر عندك بس). دوس OK للتجربة."
+    warnLbl.TextColor3 = Color3.fromRGB(255,210,100)
+    warnLbl.Font = Enum.Font.SourceSans
+    warnLbl.TextSize = 11
+    warnLbl.TextWrapped = true
+    warnLbl.TextXAlignment = Enum.TextXAlignment.Left
+    warnLbl.TextYAlignment = Enum.TextYAlignment.Top
+    Instance.new("UICorner", warnLbl).CornerRadius = UDim.new(0, 4)
+    local wp = Instance.new("UIPadding", warnLbl)
+    wp.PaddingLeft = UDim.new(0, 6); wp.PaddingRight = UDim.new(0, 6)
+    wp.PaddingTop = UDim.new(0, 4)
+
+    local okBtn = Instance.new("TextButton", f)
+    okBtn.Size = UDim2.new(0.5, -15, 0, 30)
+    okBtn.Position = UDim2.new(0, 10, 1, -40)
+    okBtn.BackgroundColor3 = Color3.fromRGB(11,90,175)
+    okBtn.Text = "OK — تعديل"
+    okBtn.TextColor3 = Color3.new(1,1,1)
+    okBtn.Font = Enum.Font.SourceSansBold
+    okBtn.TextSize = 12
+    okBtn.BorderSizePixel = 0
+    Instance.new("UICorner", okBtn).CornerRadius = UDim.new(0, 5)
+
+    local cancelBtn = Instance.new("TextButton", f)
+    cancelBtn.Size = UDim2.new(0.5, -15, 0, 30)
+    cancelBtn.Position = UDim2.new(0.5, 5, 1, -40)
+    cancelBtn.BackgroundColor3 = Color3.fromRGB(80,80,80)
+    cancelBtn.Text = "إلغاء"
+    cancelBtn.TextColor3 = Color3.new(1,1,1)
+    cancelBtn.Font = Enum.Font.SourceSansBold
+    cancelBtn.TextSize = 12
+    cancelBtn.BorderSizePixel = 0
+    Instance.new("UICorner", cancelBtn).CornerRadius = UDim.new(0, 5)
+
+    cancelBtn.MouseButton1Click:Connect(function()
+        dlg:Destroy()
+    end)
+
+    okBtn.MouseButton1Click:Connect(function()
+        local parsed = parseInput(box.Text, typ)
+        if parsed == nil then
+            box.TextColor3 = Color3.fromRGB(255,100,110)
+            box.Text = "قيمة غلط — جرب تاني"
+            return
         end
-        if #equipped > 0 then
-            add("  Equipped ("..#equipped..")", table.concat(equipped, ", "))
+        -- احفظ القيمة القديمة للمقارنة
+        local beforeVal = readVal(item)
+        pcall(writeVal, item, parsed, typ)
+        -- بعد ثانية، نتحقق: هل القيمة اتغيرت محليًا؟
+        task.wait(0.6)
+        local afterVal = readVal(item)
+        local changed = (tostring(afterVal) == tostring(parsed))
+        -- حاول نظن لو السيرفر قبِلها — لو القيمة رجعت لأصلها → رفض
+        task.wait(0.8)
+        local finalVal = readVal(item)
+        local stillThere = (tostring(finalVal) == tostring(parsed))
+        local statusTxt
+        if not changed then
+            statusTxt = "❌ فشل التعديل"
+        elseif stillThere then
+            statusTxt = "✅ LOCAL — القيمة اتغيرت عندك بس (السيرفر رفضها أو مفيش مزامنة)"
         else
-            add("  Equipped", "(none)")
+            statusTxt = "✅ SERVER — السيرفر وافق والقيمة اتزامنت"
         end
-
-        -- char attributes
-        local cAttrs = scanAttrs(ch, "[C] ")
-        if #cAttrs > 0 then
-            add("── Char Attrs ──", "", "")
-            for _, item in ipairs(cAttrs) do
-                table.insert(out, item)
-            end
-        end
-    else
-        add("── Character ──", "no character loaded")
-    end
-
-    -- backpack
-    local bp = p:FindFirstChild("Backpack")
-    if bp then
-        local items = {}
-        for _, c in ipairs(bp:GetChildren()) do
-            if c:IsA("Tool") then table.insert(items, c.Name) end
-        end
-        add("Backpack ("..#items..")", #items > 0 and table.concat(items, ", ") or "(empty)")
-    end
-
-    -- PlayerGui
-    local pg = p:FindFirstChild("PlayerGui")
-    if pg then
-        local guis = {}
-        for _, c in ipairs(pg:GetChildren()) do
-            if c:IsA("ScreenGui") or c:IsA("LayerCollector") then
-                table.insert(guis, c.Name)
-            end
-        end
-        if #guis > 0 then
-            add("PlayerGui ("..#guis..")", table.concat(guis, ", "))
-        end
-    end
-
-    -- PlayerScripts
-    local ps = p:FindFirstChild("PlayerScripts")
-    if ps then
-        add("PlayerScripts", #ps:GetChildren().." items")
-    end
-
-    -- workspace folder
-    local wf = findWorkspaceFolder(p)
-    if wf then
-        add("── Workspace Folder ──", "", "")
-        add("  Name", wf.Name)
-        add("  Class", wf.ClassName)
-        add("  Children", #wf:GetChildren())
-        add("  Total Items", countDesc(wf, 4))
-    end
-
-    -- ReplicatedStorage folder
-    local rf = findRSFolder(p)
-    if rf then
-        add("── RS Folder ──", "", "")
-        add("  Name", rf.Name)
-        add("  Class", rf.ClassName)
-        add("  Children", #rf:GetChildren())
-        add("  Total Items", countDesc(rf, 4))
-    end
-
-    -- Team
-    if p.Team then
-        add("Team", p.Team.Name.." ("..tostring(p.Team.TeamColor)..")")
-    else
-        add("Team", "None")
-    end
-
-    return out
+        if onDone then onDone(statusTxt) end
+        dlg:Destroy()
+    end)
 end
 
-local function makeRow(parent, k, v, copyVal)
+-- صف ببيانات
+local function makeRow(parent, item, displayName)
+    local typ, editable = valueInfo(item.inst, item.attrName)
+    local val = readVal(item)
+
     local row = Instance.new("Frame", parent)
-    row.Size = UDim2.new(1, -6, 0, 22)
+    row.Size = UDim2.new(1, -6, 0, 24)
     row.BackgroundColor3 = Color3.fromRGB(35,35,40)
     row.BorderSizePixel = 0
     row.LayoutOrder = #parent:GetChildren()
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 4)
 
     local lbl = Instance.new("TextLabel", row)
-    lbl.Size = UDim2.new(0, 110, 1, 0)
+    lbl.Size = UDim2.new(0, 108, 1, 0)
     lbl.Position = UDim2.new(0, 4, 0, 0)
     lbl.BackgroundTransparency = 1
-    lbl.Text = k
+    lbl.Text = displayName
     lbl.TextColor3 = Settings.Theme.PlaceholderText
     lbl.Font = Enum.Font.SourceSansBold
     lbl.TextSize = 11
     lbl.TextTruncate = Enum.TextTruncate.AtEnd
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    local val = Instance.new("TextLabel", row)
-    val.Size = UDim2.new(1, -155, 1, 0)
-    val.Position = UDim2.new(0, 116, 0, 0)
-    val.BackgroundTransparency = 1
-    val.Text = tostring(v)
-    val.TextColor3 = Settings.Theme.Text
-    val.Font = Enum.Font.Code
-    val.TextSize = 11
-    val.TextTruncate = Enum.TextTruncate.AtEnd
-    val.TextXAlignment = Enum.TextXAlignment.Left
+    local valLbl = Instance.new("TextLabel", row)
+    valLbl.Size = UDim2.new(1, -190, 1, 0)
+    valLbl.Position = UDim2.new(0, 114, 0, 0)
+    valLbl.BackgroundTransparency = 1
+    valLbl.Text = tostring(val)
+    valLbl.TextColor3 = Settings.Theme.Text
+    valLbl.Font = Enum.Font.Code
+    valLbl.TextSize = 11
+    valLbl.TextTruncate = Enum.TextTruncate.AtEnd
+    valLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    if v ~= "" and tostring(v) ~= "(none)" and tostring(v) ~= "(empty)" and tostring(v) ~= "no character loaded" then
-        local cpy = Instance.new("TextButton", row)
-        cpy.Size = UDim2.new(0, 26, 0, 18)
-        cpy.Position = UDim2.new(1, -30, 0, 2)
+    -- نوع صغير
+    local typeTag = Instance.new("TextLabel", row)
+    typeTag.Size = UDim2.new(0, 36, 1, 0)
+    typeTag.Position = UDim2.new(1, -76, 0, 0)
+    typeTag.BackgroundTransparency = 1
+    typeTag.Text = typ
+    typeTag.TextColor3 = Color3.fromRGB(120,180,120)
+    typeTag.Font = Enum.Font.Code
+    typeTag.TextSize = 9
+    typeTag.TextXAlignment = Enum.TextXAlignment.Right
+
+    -- زر النسخ (أيقونة)
+    local cpy = Instance.new("TextButton", row)
+    cpy.Size = UDim2.new(0, 22, 0, 20)
+    cpy.Position = UDim2.new(1, -50, 0, 2)
+    cpy.BackgroundColor3 = Color3.fromRGB(50,90,150)
+    cpy.Text = ""
+    cpy.TextColor3 = Color3.new(1,1,1)
+    cpy.BorderSizePixel = 0
+    cpy.AutoButtonColor = false
+    Instance.new("UICorner", cpy).CornerRadius = UDim.new(0, 4)
+    local icon1 = Instance.new("ImageLabel", cpy)
+    icon1.Size = UDim2.new(0, 16, 0, 16)
+    icon1.Position = UDim2.new(0.5, -8, 0.5, -8)
+    icon1.BackgroundTransparency = 1
+    icon1.Image = "rbxassetid://3926305904"
+    icon1.ImageRectOffset = Vector2.new((COPY_ICON_INDEX % 25) * 36, math.floor(COPY_ICON_INDEX / 25) * 36)
+    icon1.ImageRectSize = Vector2.new(36, 36)
+    cpy.MouseButton1Click:Connect(function()
+        copy(tostring(readVal(item)))
+        cpy.BackgroundColor3 = Color3.fromRGB(50,150,70)
+        task.wait(0.6)
         cpy.BackgroundColor3 = Color3.fromRGB(50,90,150)
-        cpy.Text = "C"
-        cpy.TextColor3 = Color3.fromRGB(255,255,255)
-        cpy.Font = Enum.Font.SourceSansBold
-        cpy.TextSize = 11
-        cpy.BorderSizePixel = 0
-        Instance.new("UICorner", cpy).CornerRadius = UDim.new(0, 3)
-        cpy.MouseButton1Click:Connect(function()
-            copy(copyVal or tostring(v))
-            cpy.Text = "OK"
-            task.wait(1)
-            cpy.Text = "C"
+    end)
+
+    -- زر التعديل
+    if editable then
+        local ed = Instance.new("TextButton", row)
+        ed.Size = UDim2.new(0, 22, 0, 20)
+        ed.Position = UDim2.new(1, -26, 0, 2)
+        ed.BackgroundColor3 = Color3.fromRGB(80,130,50)
+        ed.Text = ""
+        ed.BorderSizePixel = 0
+        ed.AutoButtonColor = false
+        Instance.new("UICorner", ed).CornerRadius = UDim.new(0, 4)
+        local icon2 = Instance.new("ImageLabel", ed)
+        icon2.Size = UDim2.new(0, 16, 0, 16)
+        icon2.Position = UDim2.new(0.5, -8, 0.5, -8)
+        icon2.BackgroundTransparency = 1
+        icon2.Image = "rbxassetid://3926305904"
+        icon2.ImageRectOffset = Vector2.new((EDIT_ICON_INDEX % 25) * 36, math.floor(EDIT_ICON_INDEX / 25) * 36)
+        icon2.ImageRectSize = Vector2.new(36, 36)
+        ed.MouseButton1Click:Connect(function()
+            openEditWindow(item, row, function(statusTxt)
+                valLbl.Text = tostring(readVal(item))
+                -- صف حالة صغير
+                local statusRow = Instance.new("TextLabel", parent)
+                statusRow.Size = UDim2.new(1, -6, 0, 16)
+                statusRow.BackgroundTransparency = 1
+                statusRow.LayoutOrder = #parent:GetChildren()
+                statusRow.Text = statusTxt
+                statusRow.TextColor3 = Color3.fromRGB(200,200,220)
+                statusRow.Font = Enum.Font.Code
+                statusRow.TextSize = 10
+                statusRow.TextXAlignment = Enum.TextXAlignment.Left
+                task.delay(4, function() if statusRow.Parent then statusRow:Destroy() end end)
+            end)
         end)
     end
+end
+
+local function buildInfo(p)
+    local out = {}
+    local function push(name, item)
+        table.insert(out, {name=name, item=item})
+    end
+
+    -- leaderstats
+    for _, item in ipairs(scanLeaderstats(p)) do
+        push("[LS] "..item.name, item)
+    end
+
+    -- Player attrs
+    for _, item in ipairs(scanAttrs(p, "[P] ", "pattr")) do
+        push("[P] "..item.name, item)
+    end
+
+    -- Character attrs
+    local ch = p.Character
+    if ch then
+        for _, item in ipairs(scanAttrs(ch, "[C] ", "cattr")) do
+            push("[C] "..item.name, item)
+        end
+    end
+
+    return out
 end
 
 local function createCard(parent, p)
@@ -304,21 +421,31 @@ local function createCard(parent, p)
     bLay.SortOrder = Enum.SortOrder.LayoutOrder
 
     local built = false
-
     local function build()
         if built then return end
         built = true
-        local info = buildInfo(p)
-        for _, item in ipairs(info) do
-            makeRow(body, item.k, item.v, item.copy)
+
+        local list = buildInfo(p)
+        if #list == 0 then
+            local empty = Instance.new("TextLabel", body)
+            empty.Size = UDim2.new(1, -6, 0, 20)
+            empty.BackgroundTransparency = 1
+            empty.Text = "(no editable values found)"
+            empty.TextColor3 = Settings.Theme.PlaceholderText
+            empty.Font = Enum.Font.SourceSans
+            empty.TextSize = 11
+            empty.TextXAlignment = Enum.TextXAlignment.Left
+        end
+        for _, entry in ipairs(list) do
+            makeRow(body, entry.item, entry.name)
         end
 
-        -- search user button
+        -- copy user:ID
         local sb = Instance.new("TextButton", body)
         sb.Size = UDim2.new(1, -6, 0, 26)
         sb.BackgroundColor3 = Color3.fromRGB(11,90,175)
         sb.Text = "Copy user:"..tostring(p.UserId).." (Browser)"
-        sb.TextColor3 = Color3.fromRGB(255,255,255)
+        sb.TextColor3 = Color3.new(1,1,1)
         sb.Font = Enum.Font.SourceSansBold
         sb.TextSize = 11
         sb.BorderSizePixel = 0
@@ -330,12 +457,11 @@ local function createCard(parent, p)
             sb.Text = "Copy user:"..tostring(p.UserId).." (Browser)"
         end)
 
-        -- rescan button
         local rb = Instance.new("TextButton", body)
         rb.Size = UDim2.new(1, -6, 0, 24)
         rb.BackgroundColor3 = Color3.fromRGB(50,130,80)
-        rb.Text = "Rescan (refresh data)"
-        rb.TextColor3 = Color3.fromRGB(255,255,255)
+        rb.Text = "Rescan"
+        rb.TextColor3 = Color3.new(1,1,1)
         rb.Font = Enum.Font.SourceSansBold
         rb.TextSize = 11
         rb.BorderSizePixel = 0
@@ -343,7 +469,7 @@ local function createCard(parent, p)
         rb.MouseButton1Click:Connect(function()
             built = false
             for _, c in ipairs(body:GetChildren()) do
-                if c:IsA("Frame") or c:IsA("TextButton") then c:Destroy() end
+                if c:IsA("Frame") or c:IsA("TextButton") or c:IsA("TextLabel") then c:Destroy() end
             end
             build()
         end)
@@ -367,7 +493,7 @@ PE.Init = function()
     window = Lib.Window.new()
     window:SetTitle("Players Explorer")
     local isMobile = game:GetService("UserInputService").TouchEnabled
-    window:Resize(isMobile and 340 or 400, isMobile and 440 or 520)
+    window:Resize(isMobile and 340 or 400, isMobile and 460 or 540)
     PE.Window = window
 
     local refreshBtn = Lib.Button.new()
@@ -376,15 +502,9 @@ PE.Init = function()
     refreshBtn.Position = UDim2.new(0, 4, 0, 4)
     refreshBtn.Parent = window.GuiElems.Content
 
-    local expandAllBtn = Lib.Button.new()
-    expandAllBtn.Text = "Expand All"
-    expandAllBtn.Size = UDim2.new(0, 90, 0, 24)
-    expandAllBtn.Position = UDim2.new(0, 90, 0, 4)
-    expandAllBtn.Parent = window.GuiElems.Content
-
     local countLbl = Instance.new("TextLabel", window.GuiElems.Content)
-    countLbl.Size = UDim2.new(1, -190, 0, 24)
-    countLbl.Position = UDim2.new(0, 186, 0, 4)
+    countLbl.Size = UDim2.new(1, -100, 0, 24)
+    countLbl.Position = UDim2.new(0, 90, 0, 4)
     countLbl.BackgroundTransparency = 1
     countLbl.Text = ""
     countLbl.TextColor3 = Settings.Theme.PlaceholderText
@@ -417,25 +537,6 @@ PE.Init = function()
             createCard(content, p)
         end
     end
-
-    expandAllBtn.OnClick:Connect(function()
-        for _, card in ipairs(content:GetChildren()) do
-            if card:IsA("Frame") then
-                local header = card:GetChildren()[1]
-                if header and header:IsA("TextButton") then
-                    local nm = header.Text:gsub("  .  ","")
-                    if not expanded[nm] then
-                        expanded[nm] = true
-                        local body = card:GetChildren()[2]
-                        if body then
-                            body.Visible = true
-                            header.Text = "  v  "..nm
-                        end
-                    end
-                end
-            end
-        end
-    end)
 
     refreshBtn.OnClick:Connect(refresh)
     service.Players.PlayerAdded:Connect(function() task.wait(0.3) refresh() end)
