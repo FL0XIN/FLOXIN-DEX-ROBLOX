@@ -334,13 +334,11 @@ local function makeBtn(parent, text, color, cb, w, x, y)
     return b
 end
 
--- CONSOLE (real code editor via Lib.CodeFrame)
+-- CONSOLE (real code editor + mobile toolbar + responsive)
 local function buildConsole(parent)
     local banner = Instance.new("TextLabel", parent)
-    banner.Size = UDim2.new(1, -8, 0, 26)
-    banner.Position = UDim2.new(0, 4, 0, 2)
     banner.BackgroundColor3 = Settings.Theme.Main2
-    banner.Text = "Sandbox · no external requests · no data exfil · local only"
+    banner.Text = "Sandbox · no external requests · local only"
     banner.TextColor3 = Settings.Theme.Text
     banner.TextTransparency = 0.15
     banner.Font = Enum.Font.SourceSans
@@ -350,14 +348,11 @@ local function buildConsole(parent)
     banner.TextYAlignment = Enum.TextYAlignment.Center
     Instance.new("UICorner", banner).CornerRadius = UDim.new(0, 5)
 
-    -- log area
     local out = Instance.new("ScrollingFrame", parent)
-    out.Size = UDim2.new(1, -8, 1, -400)
-    out.Position = UDim2.new(0, 4, 0, 32)
     out.BackgroundColor3 = Settings.Theme.Main1
     out.BorderSizePixel = 0
     out.ScrollBarThickness = 5
-    out.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
+    out.ScrollBarImageColor3 = Settings.Theme.Outline1
     out.CanvasSize = UDim2.new(0,0,0,0)
     Instance.new("UICorner", out).CornerRadius = UDim.new(0, 5)
     local lay = Instance.new("UIListLayout", out)
@@ -387,10 +382,14 @@ local function buildConsole(parent)
     Editor.RefreshConsole = refresh
     refresh()
 
-    -- code editor (Lib.CodeFrame)
+    local mobileRow = Instance.new("Frame", parent)
+    mobileRow.BackgroundTransparency = 1
+    local mLay = Instance.new("UIListLayout", mobileRow)
+    mLay.FillDirection = Enum.FillDirection.Horizontal
+    mLay.Padding = UDim.new(0, 3)
+    mLay.SortOrder = Enum.SortOrder.LayoutOrder
+
     local editorHolder = Instance.new("Frame", parent)
-    editorHolder.Size = UDim2.new(1, -8, 0, 260)
-    editorHolder.Position = UDim2.new(0, 4, 1, -332)
     editorHolder.BackgroundColor3 = Settings.Theme.Main1
     editorHolder.BorderSizePixel = 0
     Instance.new("UICorner", editorHolder).CornerRadius = UDim.new(0, 5)
@@ -401,10 +400,7 @@ local function buildConsole(parent)
     codeFrame.Frame.Parent = editorHolder
     codeFrame:SetText("-- Editor · sandboxed Lua\n-- try: Apps.Browser.Window:Show()\nprint('hello')")
 
-    -- buttons row
     local row = Instance.new("Frame", parent)
-    row.Size = UDim2.new(1, -8, 0, 28)
-    row.Position = UDim2.new(0, 4, 1, -66)
     row.BackgroundTransparency = 1
 
     local function runCode()
@@ -415,17 +411,85 @@ local function buildConsole(parent)
         Editor:Run(c)
     end
 
-    makeBtn(row, "Run", Color3.fromRGB(11,90,175), runCode, 70, 0)
-    makeBtn(row, "Clear Log", Color3.fromRGB(80,50,50), function() Editor:Clear() end, 80, 76)
-    makeBtn(row, "Load Last", Color3.fromRGB(60,60,70), function()
+    local function makeMBtn(text, cb, w)
+        local b = Instance.new("TextButton", mobileRow)
+        b.Size = UDim2.new(0, w or 42, 1, 0)
+        b.BackgroundColor3 = Settings.Theme.Button
+        b.Text = text
+        b.TextColor3 = Settings.Theme.Text
+        b.Font = Enum.Font.SourceSansBold
+        b.TextSize = 12
+        b.BorderSizePixel = 0
+        b.AutoButtonColor = false
+        Instance.new("UICorner", b).CornerRadius = UDim.new(0, 4)
+        b.MouseButton1Click:Connect(function() pcall(cb) end)
+        return b
+    end
+
+    makeMBtn("Del", function()
+        local cf = codeFrame
+        if cf.CursorX > 0 then
+            local line = cf.Lines[cf.CursorY + 1] or ""
+            cf.Lines[cf.CursorY + 1] = line:sub(1, cf.CursorX - 1) .. line:sub(cf.CursorX + 1)
+            cf.CursorX = cf.CursorX - 1
+            cf.FloatCursorX = cf.CursorX
+        elseif cf.CursorY > 0 then
+            local prev = cf.Lines[cf.CursorY] or ""
+            local cur = cf.Lines[cf.CursorY + 1] or ""
+            cf.Lines[cf.CursorY] = prev .. cur
+            table.remove(cf.Lines, cf.CursorY + 1)
+            cf.CursorY = cf.CursorY - 1
+            cf.CursorX = #prev
+            cf.FloatCursorX = cf.CursorX
+        end
+        cf:ProcessTextChange()
+    end, 40)
+
+    makeMBtn("Enter", function() codeFrame:AppendText("\n") end, 48)
+    makeMBtn("Tab", function() codeFrame:AppendText("    ") end, 40)
+    makeMBtn("Space", function() codeFrame:AppendText(" ") end, 48)
+    makeMBtn("Copy", function()
+        local t = codeFrame:GetText()
+        if setclipboard then pcall(setclipboard, t) end
+    end, 44)
+    makeMBtn("Clear", function() codeFrame:SetText("") end, 46)
+
+    makeBtn(row, "Run", Settings.Theme.ListSelection, runCode, 70, 0)
+    makeBtn(row, "Clr Log", Settings.Theme.Button, function() Editor:Clear() end, 70, 76)
+    makeBtn(row, "Last", Settings.Theme.Button, function()
         if historyIdx > 1 then
             historyIdx = historyIdx - 1
             codeFrame:SetText(history[historyIdx] or "")
         end
-    end, 80, 162)
-    makeBtn(row, "Save WS", Color3.fromRGB(40,120,70), function() Editor:SaveWorkspace() end, 80, 248)
+    end, 60, 152)
+    makeBtn(row, "Save", Settings.Theme.Button, function() Editor:SaveWorkspace() end, 70, 218)
 
-    -- keyboard shortcut: Ctrl+Enter to run
+    local function relayout()
+        local H = parent.AbsoluteSize.Y
+        local W = parent.AbsoluteSize.X
+        if W < 10 or H < 10 then return end
+        local bannerH = 24
+        local mobRowH = 26
+        local actRowH = 28
+        local gap = 6
+        local avail = H - bannerH - mobRowH - actRowH - gap * 4
+        if avail < 120 then avail = 120 end
+        local logH = math.max(50, math.floor(avail * 0.42))
+        local editH = math.max(70, avail - logH)
+        banner.Position = UDim2.new(0, 4, 0, 2)
+        banner.Size = UDim2.new(1, -8, 0, bannerH)
+        out.Position = UDim2.new(0, 4, 0, bannerH + gap + 2)
+        out.Size = UDim2.new(1, -8, 0, logH)
+        editorHolder.Position = UDim2.new(0, 4, 0, bannerH + gap * 2 + logH + 2)
+        editorHolder.Size = UDim2.new(1, -8, 0, editH)
+        mobileRow.Position = UDim2.new(0, 4, 0, bannerH + gap * 3 + logH + editH + 2)
+        mobileRow.Size = UDim2.new(1, -8, 0, mobRowH)
+        row.Position = UDim2.new(0, 4, 1, -actRowH - 4)
+        row.Size = UDim2.new(1, -8, 0, actRowH)
+    end
+    parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
+    task.defer(relayout)
+
     game:GetService("UserInputService").InputBegan:Connect(function(input, gp)
         if gp then return end
         if input.KeyCode == Enum.KeyCode.Return then
