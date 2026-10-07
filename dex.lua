@@ -82,6 +82,19 @@ local SCAN={
 {"Motor6D","Motor6D",false},
 {"ProximityPrompt","ProximityPrompts",false},
 }
+local EXCLUDE_PREFIX = {
+    ["RobloxReplicatedStorage."] = true,
+    ["CoreGui."] = true,
+    ["CorePackages."] = true,
+}
+local function isExcluded(obj)
+    local ok, p = pcall(function() return obj:GetFullName() end)
+    if not ok or not p then return false end
+    for prefix, _ in pairs(EXCLUDE_PREFIX) do
+        if p:sub(1, #prefix) == prefix then return true end
+    end
+    return false
+end
 local function scanAll()
 local buckets={}
 for i=1,#SCAN do buckets[i]={} end
@@ -90,6 +103,7 @@ if not ok or not descs then return buckets end
 local classMap={}
 for i,s in ipairs(SCAN) do if not s[3] then classMap[s[1]]=i end end
 for _,o in ipairs(descs) do
+if isExcluded(o) then continue end
 local cn=o.ClassName
 local idx=classMap[cn]
 if idx then
@@ -143,6 +157,31 @@ statusLabel.TextColor3=Color3.fromRGB(200,200,200)
 statusLabel.Font=Enum.Font.SourceSans
 statusLabel.TextSize=14
 statusLabel.TextXAlignment=Enum.TextXAlignment.Center
+local rsBtn=Lib.Button.new()
+rsBtn.Text="REPLICATEDSTORAGE ONLY"
+rsBtn.Size=UDim2.new(1,-4,0,24)
+rsBtn.Parent=scroll
+rsBtn.OnClick:Connect(function()
+local b=scanAll()
+local out={}
+local total=0
+for i,s in ipairs(SCAN) do
+local list=b[i]
+local filtered={}
+for j=1,#list do
+local ok,p=pcall(function() return list[j]:GetFullName() end)
+if ok and p and p:sub(1,18)=="ReplicatedStorage." then
+table.insert(filtered,list[j])
+end
+end
+if #filtered>0 then
+table.insert(out,"=== "..s[2].." ("..#filtered..") ===")
+for j=1,#filtered do table.insert(out,getPath(filtered[j])) total=total+1 end
+table.insert(out,"")
+end
+end
+copyTxt(table.concat(out,"\n"),total.." items (ReplicatedStorage)")
+end)
 local allBtn=Lib.Button.new()
 allBtn.Text="COPY EVERYTHING"
 allBtn.Size=UDim2.new(1,-4,0,24)
