@@ -15978,7 +15978,8 @@ Main = (function()
 		Main.CreateApp({Name = "Save Instance", IconMap = Main.LargeIcons, Icon = "Watcher", Window = SaveInstance.Window})
 		
 		Main.CreateApp({Name = "3D Viewer", IconMap = Explorer.LegacyClassIcons, Icon = 54, Window = ModelViewer.Window})
-		Main.CreateApp({Name = "Browser", IconMap = Main.MiscIcons, Icon = "Reference", Window = Browser.Window})
+		Main.FloxIcons = Main.FloxIcons or Lib.IconMap.new("rbxassetid://3926305904",900,900,36,36)
+		Main.CreateApp({Name = "Browser", IconMap = Main.FloxIcons, Icon = 242, Window = Browser.Window})
 
 		Main.CreateApp({Name = "Bulk Copier", IconMap = Main.MiscIcons, Icon = "Copy", Window = BulkCopier.Window})
 
