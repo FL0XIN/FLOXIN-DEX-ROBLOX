@@ -15934,8 +15934,7 @@ frame.BackgroundColor3 = Color3.fromRGB(45,45,45)
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
-local fc = Instance.new("UICorner", frame)
-fc.CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 local stroke = Instance.new("UIStroke", frame)
 stroke.Color = Color3.fromRGB(30,30,30)
 stroke.Thickness = 1
@@ -15996,15 +15995,12 @@ closeBtn.Font = Enum.Font.SourceSansBold
 closeBtn.TextSize = 13
 closeBtn.BorderSizePixel = 0
 closeBtn.AutoButtonColor = false
-local cc = Instance.new("UICorner", closeBtn)
-cc.CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 closeBtn.MouseButton1Click:Connect(function()
 if sg and sg.Parent then sg:Destroy() end
 Main._AboutGui = nil
 end)
-end)()
-			end
-		end)
+end)
 
 		-- Create Main Apps
 		Main.CreateApp({Name = "Explorer", IconMap = Main.LargeIcons, Icon = "Explorer", Open = true, Window = Explorer.Window})
