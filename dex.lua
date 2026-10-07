@@ -13651,44 +13651,68 @@ local function main()
 local function _esc(s)
 return tostring(s):gsub("\\","\\\\"):gsub("\"","\\\""):gsub("\n","\\n")
 end
-local function _serialize(obj, indent, counter)
-indent = indent or ""
+local function _serialize(obj, counter)
 counter.n = counter.n + 1
 local v = "obj"..tostring(counter.n)
 local L = {}
-table.insert(L, indent.."local "..v.." = Instance.new(\""..obj.ClassName.."\")")
-table.insert(L, indent..v..".Name = \"".._esc(obj.Name).."\"")
+table.insert(L, "local "..v.." = Instance.new(\""..obj.ClassName.."\")")
+table.insert(L, v..".Name = \"".._esc(obj.Name).."\"")
 if obj:IsA("BasePart") then
 local s = obj.Size
-table.insert(L, string.format("%s%s.Size = Vector3.new(%s, %s, %s)", indent, v, tostring(s.X), tostring(s.Y), tostring(s.Z)))
+table.insert(L, string.format("%s.Size = Vector3.new(%s, %s, %s)", v, tostring(s.X), tostring(s.Y), tostring(s.Z)))
 local x, y, z, R00, R01, R02, R10, R11, R12, R20, R21, R22 = obj.CFrame:GetComponents()
-table.insert(L, string.format("%s%s.CFrame = CFrame.new(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-indent, v, tostring(x),tostring(y),tostring(z),tostring(R00),tostring(R01),tostring(R02),
+table.insert(L, string.format("%s.CFrame = CFrame.new(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+v, tostring(x),tostring(y),tostring(z),tostring(R00),tostring(R01),tostring(R02),
 tostring(R10),tostring(R11),tostring(R12),tostring(R20),tostring(R21),tostring(R22)))
 local c = obj.Color
-table.insert(L, string.format("%s%s.Color = Color3.new(%s,%s,%s)", indent, v, tostring(c.R), tostring(c.G), tostring(c.B)))
-table.insert(L, indent..v..".Material = Enum.Material."..obj.Material.Name)
-table.insert(L, indent..v..".Anchored = "..tostring(obj.Anchored))
-table.insert(L, indent..v..".CanCollide = "..tostring(obj.CanCollide))
+table.insert(L, string.format("%s.Color = Color3.new(%s,%s,%s)", v, tostring(c.R), tostring(c.G), tostring(c.B)))
+table.insert(L, v..".Material = Enum.Material."..obj.Material.Name)
+table.insert(L, v..".Anchored = "..tostring(obj.Anchored))
+table.insert(L, v..".CanCollide = "..tostring(obj.CanCollide))
 if obj.Transparency > 0 then
-table.insert(L, indent..v..".Transparency = "..tostring(obj.Transparency))
+table.insert(L, v..".Transparency = "..tostring(obj.Transparency))
 end
 if obj:IsA("Part") then
-table.insert(L, indent..v..".Shape = Enum.PartType."..obj.Shape.Name)
+table.insert(L, v..".Shape = Enum.PartType."..obj.Shape.Name)
 end
 if obj:IsA("MeshPart") then
-table.insert(L, indent..v..".MeshId = \"".._esc(obj.MeshId).."\"")
+table.insert(L, v..".MeshId = \"".._esc(obj.MeshId).."\"")
 if obj.TextureID and obj.TextureID ~= "" then
-table.insert(L, indent..v..".TextureID = \"".._esc(obj.TextureID).."\"")
+table.insert(L, v..".TextureID = \"".._esc(obj.TextureID).."\"")
 end
 end
 end
+if obj:IsA("Attachment") then
+local p = obj.Position
+table.insert(L, string.format("%s.Position = Vector3.new(%s, %s, %s)", v, tostring(p.X), tostring(p.Y), tostring(p.Z)))
+end
+if obj:IsA("ValueBase") and obj.Value ~= nil then
+local t = typeof(obj.Value)
+if t == "number" then
+table.insert(L, v..".Value = "..tostring(obj.Value))
+elseif t == "string" then
+table.insert(L, v..".Value = \"".._esc(obj.Value).."\"")
+elseif t == "boolean" then
+table.insert(L, v..".Value = "..tostring(obj.Value))
+end
+end
+local SKIP = {
+Vector3Value = true, NoCollisionConstraint = true,
+BallSocketConstraint = true, AnimationConstraint = true,
+BillboardGui = true, FaceControls = true,
+WrapTarget = true, StringValue = true,
+UIStroke = true, TextLabel = true, UIGradient = true,
+UICorner = true, UIPadding = true, UIListLayout = true,
+}
 for _, child in ipairs(obj:GetChildren()) do
-local code, cvar = _serialize(child, indent.."\t", counter)
+if not SKIP[child.ClassName] then
+local code, cvar = _serialize(child, counter)
 table.insert(L, code)
-table.insert(L, indent..cvar..".Parent = "..v)
+table.insert(L, cvar..".Parent = "..v)
 end
-return table.concat(L, "\n"), v
+end
+return table.concat(L, "
+"), v
 end
 
 local copyCodeBtn = Instance.new("TextButton")
@@ -13709,7 +13733,7 @@ if not target then return end
 local code = "-- FLOXIN mesh export · "..target:GetFullName().."\n"
 code = code .. "local root = Instance.new(\"Folder\")\nroot.Name = \"FLOXIN_Export\"\n"
 code = code .. "root.Parent = workspace\n\n"
-local body, v = _serialize(target, "", {n=0})
+local body, v = _serialize(target, {n=0})
 code = code .. body .. "\n\n" .. v .. ".Parent = root\n\nreturn root"
 local okc = false
 if setclipboard then pcall(function() setclipboard(code) okc=true end) end
