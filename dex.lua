@@ -293,47 +293,18 @@ local function sanitizeUTF8(s)
             end
             i=i+1
         elseif b>=194 and b<=223 then
-            if i+1<=n then
-                local b2=s:byte(i+1)
-                if b2>=128 and b2<=191 then
-                    out[#out+1]=s:sub(i,i+1)
-                    i=i+2
-                else
-                    i=i+1
-                end
-            else
-                i=i+1
-            end
+            if i+1<=n and s:byte(i+1)>=128 and s:byte(i+1)<=191 then
+                out[#out+1]=s:sub(i,i+1); i=i+2
+            else i=i+1 end
         elseif b>=224 and b<=239 then
-            if i+2<=n then
-                local b2=s:byte(i+1)
-                local b3=s:byte(i+2)
-                if b2>=128 and b2<=191 and b3>=128 and b3<=191 then
-                    out[#out+1]=s:sub(i,i+2)
-                    i=i+3
-                else
-                    i=i+1
-                end
-            else
-                i=i+1
-            end
+            if i+2<=n and s:byte(i+1)>=128 and s:byte(i+1)<=191 and s:byte(i+2)>=128 and s:byte(i+2)<=191 then
+                out[#out+1]=s:sub(i,i+2); i=i+3
+            else i=i+1 end
         elseif b>=240 and b<=244 then
-            if i+3<=n then
-                local b2=s:byte(i+1)
-                local b3=s:byte(i+2)
-                local b4=s:byte(i+3)
-                if b2>=128 and b2<=191 and b3>=128 and b3<=191 and b4>=128 and b4<=191 then
-                    out[#out+1]=s:sub(i,i+3)
-                    i=i+4
-                else
-                    i=i+1
-                end
-            else
-                i=i+1
-            end
-        else
-            i=i+1
-        end
+            if i+3<=n and s:byte(i+1)>=128 and s:byte(i+1)<=191 and s:byte(i+2)>=128 and s:byte(i+2)<=191 and s:byte(i+3)>=128 and s:byte(i+3)<=191 then
+                out[#out+1]=s:sub(i,i+3); i=i+4
+            else i=i+1 end
+        else i=i+1 end
     end
     return table.concat(out)
 end
@@ -408,6 +379,7 @@ local function newScroll()
 end
 
 local function addSection(scroll,text)
+    text=sanitizeUTF8(tostring(text))
     local f=Instance.new("Frame",scroll)
     f.Size=UDim2.new(1,-6,0,20)
     f.BackgroundTransparency=1
@@ -415,7 +387,7 @@ local function addSection(scroll,text)
     local l=Instance.new("TextLabel",f)
     l.Size=UDim2.new(1,0,1,0)
     l.BackgroundTransparency=1
-    l.Text=sanitizeUTF8(text)
+    l.Text=text
     l.TextColor3=Settings.Theme.Text
     l.Font=Enum.Font.SourceSansBold
     l.TextSize=13
@@ -457,9 +429,9 @@ local function addLink(scroll,text,cb)
 end
 
 local function addKV(scroll,key,value)
-    local kclean=sanitizeUTF8(tostring(key))
-    local vclean=sanitizeUTF8(tostring(value))
-    currentPageText=currentPageText..kclean..": "..vclean.."\n"
+    key=sanitizeUTF8(tostring(key))
+    value=sanitizeUTF8(tostring(value))
+    currentPageText=currentPageText..key..": "..value.."\n"
     local f=Instance.new("Frame",scroll)
     f.Size=UDim2.new(1,-6,0,0)
     f.AutomaticSize=Enum.AutomaticSize.Y
@@ -468,7 +440,7 @@ local function addKV(scroll,key,value)
     local k=Instance.new("TextLabel",f)
     k.Size=UDim2.new(0,95,0,16)
     k.BackgroundTransparency=1
-    k.Text=kclean..":"
+    k.Text=tostring(key)..":"
     k.TextColor3=Settings.Theme.PlaceholderText
     k.Font=Enum.Font.SourceSansBold
     k.TextSize=12
@@ -478,7 +450,7 @@ local function addKV(scroll,key,value)
     v.Position=UDim2.new(0,100,0,0)
     v.AutomaticSize=Enum.AutomaticSize.Y
     v.BackgroundTransparency=1
-    v.Text=vclean
+    v.Text=tostring(value)
     v.TextColor3=Settings.Theme.Text
     v.TextTransparency=0.1
     v.Font=Enum.Font.SourceSans
@@ -573,16 +545,14 @@ local function tryOn(assetId,statusLbl)
 end
 
 local function addCatalogRow(scroll,name,price,creator,assetId,cb)
-    local clean=sanitizeUTF8(tostring(name))
-    currentPageText=currentPageText..clean.." - "..tostring(price).." R$ - "..tostring(creator).."\n"
     local f=Instance.new("Frame",scroll)
     f.Size=UDim2.new(1,-6,0,58)
     f.BackgroundColor3=Settings.Theme.Main2
     f.BorderSizePixel=0
     f.LayoutOrder=#scroll:GetChildren()
     Instance.new("UICorner",f).CornerRadius=UDim.new(0,5)
-    local fl=(tostring(clean):sub(1,1) or "?"):upper()
-    local hue=(clean:byte(1) or 65)/255
+    local fl=(tostring(name):sub(1,1) or "?"):upper()
+    local hue=(tostring(name):byte(1) or 65)/255
     local ph=Instance.new("Frame",f)
     ph.Size=UDim2.new(0,44,0,44)
     ph.Position=UDim2.new(0,6,0,7)
@@ -600,7 +570,7 @@ local function addCatalogRow(scroll,name,price,creator,assetId,cb)
     txt.Size=UDim2.new(1,-130,1,0)
     txt.Position=UDim2.new(0,56,0,0)
     txt.BackgroundTransparency=1
-    txt.Text=clean.."\n"..tostring(price).." R$ - "..tostring(creator)
+    txt.Text=name.."\n"..price.." R$ - "..creator
     txt.TextColor3=Settings.Theme.Text
     txt.Font=Enum.Font.SourceSans
     txt.TextSize=12
@@ -896,6 +866,22 @@ Browser.Init=function()
     copyPageBtn.Size=UDim2.new(0,80,1,0)
     copyPageBtn.Position=UDim2.new(0,172,0,0)
     copyPageBtn.Parent=tabRow
+    copyPageBtn.OnClick:Connect(function()
+        local txt=currentPageText
+        if #txt==0 then
+            copyPageBtn.Text="Empty"
+            task.wait(1.5)
+            copyPageBtn.Text="Copy Page"
+            return
+        end
+        local okc=false
+        if env and env.setclipboard then pcall(function() env.setclipboard(txt) okc=true end) end
+        if not okc and setclipboard then pcall(function() setclipboard(txt) okc=true end) end
+        if not okc and toclipboard then pcall(function() toclipboard(txt) okc=true end) end
+        copyPageBtn.Text=okc and "Copied!" or "N/A"
+        task.wait(1.5)
+        copyPageBtn.Text="Copy Page"
+    end)
 
     local function updateTabs()
         if activeTab=="WEB" then
@@ -916,23 +902,6 @@ Browser.Init=function()
     rbxBtn.OnClick:Connect(function()
         if activeTab=="RBX" then return end
         activeTab="RBX" updateTabs() navigate("1")
-    end)
-
-    copyPageBtn.OnClick:Connect(function()
-        local txt=currentPageText
-        if #txt==0 then
-            copyPageBtn.Text="Empty"
-            task.wait(1.5)
-            copyPageBtn.Text="Copy Page"
-            return
-        end
-        local ok=false
-        if env and env.setclipboard then pcall(function() env.setclipboard(txt) ok=true end) end
-        if not ok and setclipboard then pcall(function() setclipboard(txt) ok=true end) end
-        if not ok and toclipboard then pcall(function() toclipboard(txt) ok=true end) end
-        copyPageBtn.Text=ok and "Copied!" or "N/A"
-        task.wait(1.5)
-        copyPageBtn.Text="Copy Page"
     end)
 
     local toolbar=Instance.new("Frame",content)
