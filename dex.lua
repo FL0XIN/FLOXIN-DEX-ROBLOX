@@ -13651,6 +13651,13 @@ local function main()
 local function _esc(s)
 return tostring(s):gsub("\\","\\\\"):gsub("\"","\\\""):gsub("\n","\\n")
 end
+local function _cleanAsset(url)
+if type(url) ~= "string" or url == "" then return url end
+local id = url:match("[?&]id=(%d+)")
+if id then return "rbxassetid://"..id end
+return url
+end
+
 local function _serialize(obj, counter)
 counter.n = counter.n + 1
 local v = "obj"..tostring(counter.n)
@@ -13665,7 +13672,7 @@ table.insert(L, string.format("%s.CFrame = CFrame.new(%s,%s,%s,%s,%s,%s,%s,%s,%s
 v, tostring(x),tostring(y),tostring(z),tostring(R00),tostring(R01),tostring(R02),
 tostring(R10),tostring(R11),tostring(R12),tostring(R20),tostring(R21),tostring(R22)))
 local c = obj.Color
-table.insert(L, string.format("%s.Color = Color3.new(%s,%s,%s)", v, tostring(c.R), tostring(c.G), tostring(c.B)))
+table.insert(L, string.format("%s.Color = Color3.fromRGB(%d,%d,%d)", v, math.floor(c.R*255+0.5), math.floor(c.G*255+0.5), math.floor(c.B*255+0.5)))
 table.insert(L, v..".Material = Enum.Material."..obj.Material.Name)
 table.insert(L, v..".Anchored = "..tostring(obj.Anchored))
 table.insert(L, v..".CanCollide = "..tostring(obj.CanCollide))
@@ -13676,9 +13683,9 @@ if obj:IsA("Part") then
 table.insert(L, v..".Shape = Enum.PartType."..obj.Shape.Name)
 end
 if obj:IsA("MeshPart") then
-table.insert(L, v..".MeshId = \"".._esc(obj.MeshId).."\"")
+table.insert(L, v..".MeshId = \"".._esc(_cleanAsset(obj.MeshId)).."\"")
 if obj.TextureID and obj.TextureID ~= "" then
-table.insert(L, v..".TextureID = \"".._esc(obj.TextureID).."\"")
+table.insert(L, v..".TextureID = \"".._esc(_cleanAsset(obj.TextureID)).."\"")
 end
 end
 end
