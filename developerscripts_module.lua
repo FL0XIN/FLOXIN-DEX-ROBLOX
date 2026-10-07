@@ -82,8 +82,23 @@ local function mkPopup(title, w, h)
     gui.IgnoreGuiInset = true
     gui.ResetOnSpawn = false
     gui.DisplayOrder = 999999
-    local parent = (gethui and select(2, pcall(gethui))) or game:GetService("CoreGui")
-    if not parent then parent = plr:WaitForChild("PlayerGui", 5) end
+    local parent
+    if gethui then
+        local ok, h = pcall(gethui)
+        if ok and h and typeof(h) == "Instance" then parent = h end
+    end
+    if not parent then
+        local ok, cg = pcall(function() return game:GetService("CoreGui") end)
+        if ok and cg then parent = cg end
+    end
+    if not parent then
+        local ok, pg = pcall(function() return plr:WaitForChild("PlayerGui", 5) end)
+        if ok and pg then parent = pg end
+    end
+    if not parent then
+        warn("[DS] no valid parent")
+        return nil, nil
+    end
     gui.Parent = parent
 
     local main = Instance.new("Frame", gui)
@@ -789,8 +804,16 @@ DS.Init = function()
         return b
     end
 
-    mkBtn("+ Create", -220, 70, openCreate)
-    mkBtn("Import", -145, 70, openImport)
+    mkBtn("+ Create", -220, 70, function()
+        if statusLbl then statusLbl.Text = "[click] create pressed" end
+        local ok, err = pcall(openCreate)
+        if not ok and statusLbl then statusLbl.Text = "ERR: "..tostring(err):sub(1,80) end
+    end)
+    mkBtn("Import", -145, 70, function()
+        if statusLbl then statusLbl.Text = "[click] import pressed" end
+        local ok, err = pcall(openImport)
+        if not ok and statusLbl then statusLbl.Text = "ERR: "..tostring(err):sub(1,80) end
+    end)
     mkBtn("Refresh", -70, 66, function()
         if statusLbl then statusLbl.Text = "loading..." end
         task.spawn(function()
