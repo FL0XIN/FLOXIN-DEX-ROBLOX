@@ -15291,7 +15291,7 @@ Main = (function()
 		
 		Main.CreateApp({Name = "3D Viewer", IconMap = Explorer.LegacyClassIcons, Icon = 54, Window = ModelViewer.Window})
 
-		Main.CreateApp({Name = "Bulk Copier", IconMap = Main.LargeIcons, Icon = "Watcher", Window = BulkCopier.Window})
+		Main.CreateApp({Name = "Bulk Copier", IconMap = Main.MiscIcons, Icon = "Copy", Window = BulkCopier.Window})
 
 		--Main.CreateApp({Name = "Secret Service Panel", IconMap = Main.LargeIcons, Icon = "Output", Window = SecretServicePanel.Window})
 
