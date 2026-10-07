@@ -76,14 +76,66 @@ local function copy(t)
     return ok
 end
 
+local function mkPopup(title, w, h)
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "FLOXIN_Popup_" .. tostring(math.random(1,1e6))
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.DisplayOrder = 999999
+    local parent = (gethui and select(2, pcall(gethui))) or game:GetService("CoreGui")
+    if not parent then parent = plr:WaitForChild("PlayerGui", 5) end
+    gui.Parent = parent
+
+    local main = Instance.new("Frame", gui)
+    main.Size = UDim2.new(0, w, 0, h)
+    main.Position = UDim2.new(0.5, -w/2, 0.5, -h/2)
+    main.BackgroundColor3 = Settings.Theme.Main1
+    main.BorderSizePixel = 0
+    main.Active = true
+    main.Draggable = true
+    Instance.new("UICorner", main).CornerRadius = UDim.new(0, 8)
+
+    local bar = Instance.new("Frame", main)
+    bar.Size = UDim2.new(1, 0, 0, 24)
+    bar.BackgroundColor3 = Settings.Theme.Main2
+    bar.BorderSizePixel = 0
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 8)
+
+    local t = Instance.new("TextLabel", bar)
+    t.Size = UDim2.new(1, -30, 1, 0)
+    t.Position = UDim2.new(0, 8, 0, 0)
+    t.BackgroundTransparency = 1
+    t.Text = title
+    t.TextColor3 = Settings.Theme.Text
+    t.Font = Enum.Font.SourceSansBold
+    t.TextSize = 13
+    t.TextXAlignment = Enum.TextXAlignment.Left
+
+    local x = Instance.new("TextButton", bar)
+    x.Size = UDim2.new(0, 20, 0, 18)
+    x.Position = UDim2.new(1, -24, 0, 3)
+    x.BackgroundColor3 = Settings.Theme.Button
+    x.Text = "X"
+    x.TextColor3 = Settings.Theme.Text
+    x.Font = Enum.Font.SourceSansBold
+    x.TextSize = 11
+    x.BorderSizePixel = 0
+    x.AutoButtonColor = false
+    Instance.new("UICorner", x).CornerRadius = UDim.new(0, 4)
+    x.MouseButton1Click:Connect(function() gui:Destroy() end)
+
+    local content = Instance.new("Frame", main)
+    content.Size = UDim2.new(1, -8, 1, -32)
+    content.Position = UDim2.new(0, 4, 0, 28)
+    content.BackgroundTransparency = 1
+
+    return gui, content
+end
+
 -- ============ IDENTITY CARD ============
 local function openIdentity(item, isMine)
-    local win = Lib.Window.new()
-    win:SetTitle("Script Identity")
     local isMobile = game:GetService("UserInputService").TouchEnabled
-    win:Resize(isMobile and 320 or 380, isMobile and 380 or 440)
-    win.Resizable = false
-    local content = win.GuiElems.Content
+    local _, content = mkPopup("Script Identity", isMobile and 320 or 380, isMobile and 380 or 440)
 
     local Y = 8
     local function addLine(label, value, col)
@@ -204,20 +256,15 @@ local function openIdentity(item, isMine)
     end
 
     local closeBtn = mkBtn("Close", 226, 100, Settings.Theme.Button, function()
-        pcall(function() win:Close() end)
+        local top = content.Parent
+        if top and top.Parent then top.Parent:Destroy() end
     end)
-
-    win:Show()
 end
 
 -- ============ CREATE ============
 local function openCreate()
-    local win = Lib.Window.new()
-    win:SetTitle("Create New Script")
     local isMobile = game:GetService("UserInputService").TouchEnabled
-    win:Resize(isMobile and 340 or 420, isMobile and 500 or 560)
-    win.Resizable = false
-    local content = win.GuiElems.Content
+    local _, content = mkPopup("Create New Script", isMobile and 340 or 420, isMobile and 500 or 560)
 
     local function mkField(y, label, placeholder)
         local l = Instance.new("TextLabel", content)
@@ -340,7 +387,10 @@ local function openCreate()
     status.TextSize = 11
     status.TextXAlignment = Enum.TextXAlignment.Left
 
-    local function close() pcall(function() win:Close() end) end
+    local function close()
+        local top = content.Parent
+        if top and top.Parent then top.Parent:Destroy() end
+    end
 
     local sb = Instance.new("TextButton", content)
     sb.Size = UDim2.new(0, 120, 0, 30)
@@ -395,18 +445,12 @@ local function openCreate()
     cb.BorderSizePixel = 0
     Instance.new("UICorner", cb).CornerRadius = UDim.new(0, 5)
     cb.MouseButton1Click:Connect(close)
-
-    win:Show()
 end
 
 -- ============ IMPORT ============
 local function openImport()
-    local win = Lib.Window.new()
-    win:SetTitle("Import Script from URL")
     local isMobile = game:GetService("UserInputService").TouchEnabled
-    win:Resize(isMobile and 340 or 420, isMobile and 260 or 300)
-    win.Resizable = false
-    local content = win.GuiElems.Content
+    local _, content = mkPopup("Import Script from URL", isMobile and 340 or 420, isMobile and 260 or 300)
 
     local desc = Instance.new("TextLabel", content)
     desc.Size = UDim2.new(1, -20, 0, 40)
@@ -445,7 +489,10 @@ local function openImport()
     status.TextWrapped = true
     status.TextXAlignment = Enum.TextXAlignment.Left
 
-    local function close() pcall(function() win:Close() end) end
+    local function close()
+        local top = content.Parent
+        if top and top.Parent then top.Parent:Destroy() end
+    end
 
     local fb = Instance.new("TextButton", content)
     fb.Size = UDim2.new(0, 130, 0, 30)
@@ -500,7 +547,6 @@ local function openImport()
     Instance.new("UICorner", cb).CornerRadius = UDim.new(0, 5)
     cb.MouseButton1Click:Connect(close)
 
-    win:Show()
 end
 
 -- ============ LIST ============
