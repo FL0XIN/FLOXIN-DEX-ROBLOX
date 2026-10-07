@@ -15,7 +15,6 @@ local function main()
 local PE = {}
 local window, content
 local expanded = {}
-local HttpSvc = game:GetService("HttpService")
 local localPlayer = service.Players.LocalPlayer
 
 local function copy(t)
@@ -26,52 +25,206 @@ local function copy(t)
     return ok
 end
 
-local function fetchJson(url)
-    local ok, raw = pcall(function() return game:HttpGet(url) end)
-    if not ok or not raw then return nil end
-    local s, d = pcall(function() return HttpSvc:JSONDecode(raw) end)
-    return s and d or nil
+-- scan leaderstats
+local function scanLeaderstats(p)
+    local list = {}
+    local ls = p:FindFirstChild("leaderstats")
+    if not ls then return list end
+    for _, c in ipairs(ls:GetChildren()) do
+        if c:IsA("ValueBase") then
+            table.insert(list, {k = "  [LS] "..c.Name, v = tostring(c.Value), copy = tostring(c.Value)})
+        end
+    end
+    return list
 end
 
-local function getPlayerInfo(p)
-    local t = {}
-    t["UserId"] = tostring(p.UserId)
-    t["Name"] = p.Name
-    t["DisplayName"] = p.DisplayName or p.Name
-    local ageOk, age = pcall(function() return p.AccountAge end)
-    t["AccountAge"] = ageOk and (tostring(age).." days") or "?"
-    local mtOk, mt = pcall(function() return p.MembershipType end)
-    t["Membership"] = mtOk and tostring(mt):gsub("Enum%.MembershipType%.","") or "None"
-    local teamOk, team = pcall(function() return p.Team end)
-    t["Team"] = (teamOk and team and team.Name) or "None"
-    local chOk, ch = pcall(function() return p.Character end)
-    if chOk and ch then
-        t["HasCharacter"] = "yes"
+-- scan attributes of an instance
+local function scanAttrs(inst, prefix)
+    local list = {}
+    local ok, attrs = pcall(function() return inst:GetAttributes() end)
+    if not ok or not attrs then return list end
+    for name, val in pairs(attrs) do
+        table.insert(list, {k = "  "..prefix..name, v = tostring(val), copy = tostring(val)})
+    end
+    return list
+end
+
+-- scan player-specific folder in workspace
+local function findWorkspaceFolder(p)
+    local candidates = { p.Name, tostring(p.UserId), p.DisplayName }
+    for _, name in ipairs(candidates) do
+        local f = workspace:FindFirstChild(name)
+        if f then return f end
+    end
+    return nil
+end
+
+-- scan ReplicatedStorage player folder
+local function findRSFolder(p)
+    local RS = game:GetService("ReplicatedStorage")
+    local candidates = { p.Name, tostring(p.UserId), p.DisplayName }
+    for _, name in ipairs(candidates) do
+        local f = RS:FindFirstChild(name)
+        if f then return f end
+    end
+    return nil
+end
+
+-- recursive count of descendants
+local function countDesc(inst, maxDepth)
+    maxDepth = maxDepth or 4
+    local count = 0
+    local function rec(o, d)
+        if d > maxDepth then return end
+        for _, c in ipairs(o:GetChildren()) do
+            count = count + 1
+            if #c:GetChildren() > 0 then rec(c, d+1) end
+        end
+    end
+    rec(inst, 0)
+    return count
+end
+
+local function buildInfo(p)
+    local out = {}
+    local function add(k, v, copyVal)
+        table.insert(out, {k=k, v=v, copy=copyVal or tostring(v)})
+    end
+
+    add("Name", p.Name)
+    add("Display", p.DisplayName or p.Name)
+    add("UserId", tostring(p.UserId), "user:"..p.UserId)
+    add("AccountAge", (function()
+        local ok, a = pcall(function() return p.AccountAge end)
+        return ok and (tostring(a).."d") or "?"
+    end)())
+    add("Membership", (function()
+        local ok, m = pcall(function() return p.MembershipType end)
+        return ok and tostring(m):gsub("Enum%.MembershipType%.","") or "None"
+    end)())
+
+    -- leaderstats
+    local ls = scanLeaderstats(p)
+    if #ls > 0 then
+        add("── leaderstats ──", "", "")
+        for _, item in ipairs(ls) do
+            table.insert(out, item)
+        end
+    end
+
+    -- player attributes
+    local pAttrs = scanAttrs(p, "[P] ")
+    if #pAttrs > 0 then
+        add("── Player Attrs ──", "", "")
+        for _, item in ipairs(pAttrs) do
+            table.insert(out, item)
+        end
+    end
+
+    -- character data
+    local ch = p.Character
+    if ch then
+        add("── Character ──", "", "")
         local hum = ch:FindFirstChildOfClass("Humanoid")
         if hum then
-            t["Health"] = math.floor(hum.Health).."/"..math.floor(hum.MaxHealth)
-            t["WalkSpeed"] = tostring(math.floor(hum.WalkSpeed))
-            t["RigType"] = tostring(hum.RigType):gsub("Enum%.HumanoidRigType%.","")
-        else
-            t["Health"] = "?"
+            add("  Health", math.floor(hum.Health).."/"..math.floor(hum.MaxHealth))
+            add("  WalkSpeed", tostring(math.floor(hum.WalkSpeed)))
+            add("  JumpPower", tostring(math.floor(hum.JumpPower or hum.UseJumpPower and hum.JumpPower or 0)))
+            add("  State", tostring(hum:GetState()):gsub("Enum%.HumanoidStateType%.",""))
+            add("  RigType", tostring(hum.RigType):gsub("Enum%.HumanoidRigType%.",""))
         end
         local hrp = ch:FindFirstChild("HumanoidRootPart")
         if hrp then
             local pos = hrp.Position
-            t["Position"] = string.format("%.0f, %.0f, %.0f", pos.X, pos.Y, pos.Z)
+            local vel = hrp.Velocity
+            add("  Position", string.format("%.0f, %.0f, %.0f", pos.X, pos.Y, pos.Z))
+            add("  Velocity", string.format("%.0f, %.0f, %.0f", vel.X, vel.Y, vel.Z))
+        end
+
+        -- equipped tools
+        local equipped = {}
+        for _, c in ipairs(ch:GetChildren()) do
+            if c:IsA("Tool") then table.insert(equipped, c.Name) end
+        end
+        if #equipped > 0 then
+            add("  Equipped ("..#equipped..")", table.concat(equipped, ", "))
         else
-            t["Position"] = "?"
+            add("  Equipped", "(none)")
+        end
+
+        -- char attributes
+        local cAttrs = scanAttrs(ch, "[C] ")
+        if #cAttrs > 0 then
+            add("── Char Attrs ──", "", "")
+            for _, item in ipairs(cAttrs) do
+                table.insert(out, item)
+            end
         end
     else
-        t["HasCharacter"] = "no"
-        t["Health"] = "-"
+        add("── Character ──", "no character loaded")
     end
-    local fr = pcall(function() return p:IsFriendsWith(localPlayer.UserId) end)
-    t["FriendWithMe"] = fr and "yes" or "no"
-    return t
+
+    -- backpack
+    local bp = p:FindFirstChild("Backpack")
+    if bp then
+        local items = {}
+        for _, c in ipairs(bp:GetChildren()) do
+            if c:IsA("Tool") then table.insert(items, c.Name) end
+        end
+        add("Backpack ("..#items..")", #items > 0 and table.concat(items, ", ") or "(empty)")
+    end
+
+    -- PlayerGui
+    local pg = p:FindFirstChild("PlayerGui")
+    if pg then
+        local guis = {}
+        for _, c in ipairs(pg:GetChildren()) do
+            if c:IsA("ScreenGui") or c:IsA("LayerCollector") then
+                table.insert(guis, c.Name)
+            end
+        end
+        if #guis > 0 then
+            add("PlayerGui ("..#guis..")", table.concat(guis, ", "))
+        end
+    end
+
+    -- PlayerScripts
+    local ps = p:FindFirstChild("PlayerScripts")
+    if ps then
+        add("PlayerScripts", #ps:GetChildren().." items")
+    end
+
+    -- workspace folder
+    local wf = findWorkspaceFolder(p)
+    if wf then
+        add("── Workspace Folder ──", "", "")
+        add("  Name", wf.Name)
+        add("  Class", wf.ClassName)
+        add("  Children", #wf:GetChildren())
+        add("  Total Items", countDesc(wf, 4))
+    end
+
+    -- ReplicatedStorage folder
+    local rf = findRSFolder(p)
+    if rf then
+        add("── RS Folder ──", "", "")
+        add("  Name", rf.Name)
+        add("  Class", rf.ClassName)
+        add("  Children", #rf:GetChildren())
+        add("  Total Items", countDesc(rf, 4))
+    end
+
+    -- Team
+    if p.Team then
+        add("Team", p.Team.Name.." ("..tostring(p.Team.TeamColor)..")")
+    else
+        add("Team", "None")
+    end
+
+    return out
 end
 
-local function makeRow(parent, label, value, copyText, extraBtn, extraCb)
+local function makeRow(parent, k, v, copyVal)
     local row = Instance.new("Frame", parent)
     row.Size = UDim2.new(1, -6, 0, 22)
     row.BackgroundColor3 = Color3.fromRGB(35,35,40)
@@ -80,71 +233,45 @@ local function makeRow(parent, label, value, copyText, extraBtn, extraCb)
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 4)
 
     local lbl = Instance.new("TextLabel", row)
-    lbl.Size = UDim2.new(0, 95, 1, 0)
+    lbl.Size = UDim2.new(0, 110, 1, 0)
     lbl.Position = UDim2.new(0, 4, 0, 0)
     lbl.BackgroundTransparency = 1
-    lbl.Text = label
+    lbl.Text = k
     lbl.TextColor3 = Settings.Theme.PlaceholderText
     lbl.Font = Enum.Font.SourceSansBold
     lbl.TextSize = 11
+    lbl.TextTruncate = Enum.TextTruncate.AtEnd
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
     local val = Instance.new("TextLabel", row)
-    val.Size = UDim2.new(1, -150, 1, 0)
-    val.Position = UDim2.new(0, 102, 0, 0)
+    val.Size = UDim2.new(1, -155, 1, 0)
+    val.Position = UDim2.new(0, 116, 0, 0)
     val.BackgroundTransparency = 1
-    val.Text = tostring(value)
+    val.Text = tostring(v)
     val.TextColor3 = Settings.Theme.Text
     val.Font = Enum.Font.Code
     val.TextSize = 11
     val.TextTruncate = Enum.TextTruncate.AtEnd
     val.TextXAlignment = Enum.TextXAlignment.Left
 
-    local cpy = Instance.new("TextButton", row)
-    cpy.Size = UDim2.new(0, 22, 0, 18)
-    cpy.Position = UDim2.new(1, -46, 0, 2)
-    cpy.BackgroundColor3 = Color3.fromRGB(50,90,150)
-    cpy.Text = "C"
-    cpy.TextColor3 = Color3.fromRGB(255,255,255)
-    cpy.Font = Enum.Font.SourceSansBold
-    cpy.TextSize = 11
-    cpy.BorderSizePixel = 0
-    Instance.new("UICorner", cpy).CornerRadius = UDim.new(0, 3)
-    cpy.MouseButton1Click:Connect(function()
-        copy(copyText or tostring(value))
-        cpy.Text = "OK"
-        task.wait(1)
+    if v ~= "" and tostring(v) ~= "(none)" and tostring(v) ~= "(empty)" and tostring(v) ~= "no character loaded" then
+        local cpy = Instance.new("TextButton", row)
+        cpy.Size = UDim2.new(0, 26, 0, 18)
+        cpy.Position = UDim2.new(1, -30, 0, 2)
+        cpy.BackgroundColor3 = Color3.fromRGB(50,90,150)
         cpy.Text = "C"
-    end)
-
-    if extraBtn and extraCb then
-        local ex = Instance.new("TextButton", row)
-        ex.Size = UDim2.new(0, 22, 0, 18)
-        ex.Position = UDim2.new(1, -22, 0, 2)
-        ex.BackgroundColor3 = Color3.fromRGB(50,130,80)
-        ex.Text = extraBtn
-        ex.TextColor3 = Color3.fromRGB(255,255,255)
-        ex.Font = Enum.Font.SourceSansBold
-        ex.TextSize = 10
-        ex.BorderSizePixel = 0
-        Instance.new("UICorner", ex).CornerRadius = UDim.new(0, 3)
-        ex.MouseButton1Click:Connect(extraCb)
+        cpy.TextColor3 = Color3.fromRGB(255,255,255)
+        cpy.Font = Enum.Font.SourceSansBold
+        cpy.TextSize = 11
+        cpy.BorderSizePixel = 0
+        Instance.new("UICorner", cpy).CornerRadius = UDim.new(0, 3)
+        cpy.MouseButton1Click:Connect(function()
+            copy(copyVal or tostring(v))
+            cpy.Text = "OK"
+            task.wait(1)
+            cpy.Text = "C"
+        end)
     end
-end
-
-local function makeBigBtn(parent, text, color, cb)
-    local b = Instance.new("TextButton", parent)
-    b.Size = UDim2.new(0.5, -4, 0, 26)
-    b.Position = UDim2.new(#parent:GetChildren() % 2 == 0 and 0 or 0.5, 4, 0, 0)
-    b.BackgroundColor3 = color
-    b.Text = text
-    b.TextColor3 = Color3.fromRGB(255,255,255)
-    b.Font = Enum.Font.SourceSansBold
-    b.TextSize = 11
-    b.BorderSizePixel = 0
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 5)
-    b.MouseButton1Click:Connect(cb)
-    return b
 end
 
 local function createCard(parent, p)
@@ -159,7 +286,7 @@ local function createCard(parent, p)
     local header = Instance.new("TextButton", holder)
     header.Size = UDim2.new(1, 0, 0, 30)
     header.BackgroundTransparency = 1
-    header.Text = "  v  "..p.Name
+    header.Text = "  >  "..p.Name
     header.TextColor3 = Settings.Theme.Text
     header.Font = Enum.Font.SourceSansBold
     header.TextSize = 13
@@ -173,54 +300,52 @@ local function createCard(parent, p)
     body.BackgroundTransparency = 1
     body.Visible = false
     local bLay = Instance.new("UIListLayout", body)
-    bLay.Padding = UDim.new(0, 3)
+    bLay.Padding = UDim.new(0, 2)
+    bLay.SortOrder = Enum.SortOrder.LayoutOrder
 
     local built = false
+
     local function build()
         if built then return end
         built = true
-        local info = getPlayerInfo(p)
-        local order = {
-            "UserId", "Name", "DisplayName", "AccountAge", "Membership",
-            "Team", "FriendWithMe", "HasCharacter", "Health", "WalkSpeed",
-            "RigType", "Position",
-        }
-        for _, k in ipairs(order) do
-            if info[k] then
-                makeRow(body, k, info[k], tostring(info[k]))
-            end
+        local info = buildInfo(p)
+        for _, item in ipairs(info) do
+            makeRow(body, item.k, item.v, item.copy)
         end
-        -- buttons
-        local searchBtn = Instance.new("TextButton", body)
-        searchBtn.Size = UDim2.new(1, -6, 0, 26)
-        searchBtn.BackgroundColor3 = Color3.fromRGB(11,90,175)
-        searchBtn.Text = "Copy 'user:"..tostring(p.UserId).."' for Browser"
-        searchBtn.TextColor3 = Color3.fromRGB(255,255,255)
-        searchBtn.Font = Enum.Font.SourceSansBold
-        searchBtn.TextSize = 11
-        searchBtn.BorderSizePixel = 0
-        Instance.new("UICorner", searchBtn).CornerRadius = UDim.new(0, 5)
-        searchBtn.MouseButton1Click:Connect(function()
+
+        -- search user button
+        local sb = Instance.new("TextButton", body)
+        sb.Size = UDim2.new(1, -6, 0, 26)
+        sb.BackgroundColor3 = Color3.fromRGB(11,90,175)
+        sb.Text = "Copy user:"..tostring(p.UserId).." (Browser)"
+        sb.TextColor3 = Color3.fromRGB(255,255,255)
+        sb.Font = Enum.Font.SourceSansBold
+        sb.TextSize = 11
+        sb.BorderSizePixel = 0
+        Instance.new("UICorner", sb).CornerRadius = UDim.new(0, 5)
+        sb.MouseButton1Click:Connect(function()
             copy("user:"..tostring(p.UserId))
-            searchBtn.Text = "Copied!"
+            sb.Text = "Copied!"
             task.wait(1.5)
-            searchBtn.Text = "Copy 'user:"..tostring(p.UserId).."' for Browser"
+            sb.Text = "Copy user:"..tostring(p.UserId).." (Browser)"
         end)
 
-        local copyNameBtn = Instance.new("TextButton", body)
-        copyNameBtn.Size = UDim2.new(1, -6, 0, 24)
-        copyNameBtn.BackgroundColor3 = Color3.fromRGB(60,60,70)
-        copyNameBtn.Text = "Copy player Name"
-        copyNameBtn.TextColor3 = Settings.Theme.Text
-        copyNameBtn.Font = Enum.Font.SourceSans
-        copyNameBtn.TextSize = 11
-        copyNameBtn.BorderSizePixel = 0
-        Instance.new("UICorner", copyNameBtn).CornerRadius = UDim.new(0, 5)
-        copyNameBtn.MouseButton1Click:Connect(function()
-            copy(p.Name)
-            copyNameBtn.Text = "Copied!"
-            task.wait(1.2)
-            copyNameBtn.Text = "Copy player Name"
+        -- rescan button
+        local rb = Instance.new("TextButton", body)
+        rb.Size = UDim2.new(1, -6, 0, 24)
+        rb.BackgroundColor3 = Color3.fromRGB(50,130,80)
+        rb.Text = "Rescan (refresh data)"
+        rb.TextColor3 = Color3.fromRGB(255,255,255)
+        rb.Font = Enum.Font.SourceSansBold
+        rb.TextSize = 11
+        rb.BorderSizePixel = 0
+        Instance.new("UICorner", rb).CornerRadius = UDim.new(0, 5)
+        rb.MouseButton1Click:Connect(function()
+            built = false
+            for _, c in ipairs(body:GetChildren()) do
+                if c:IsA("Frame") or c:IsA("TextButton") then c:Destroy() end
+            end
+            build()
         end)
     end
 
@@ -242,7 +367,7 @@ PE.Init = function()
     window = Lib.Window.new()
     window:SetTitle("Players Explorer")
     local isMobile = game:GetService("UserInputService").TouchEnabled
-    window:Resize(isMobile and 320 or 380, isMobile and 420 or 480)
+    window:Resize(isMobile and 340 or 400, isMobile and 440 or 520)
     PE.Window = window
 
     local refreshBtn = Lib.Button.new()
@@ -251,9 +376,15 @@ PE.Init = function()
     refreshBtn.Position = UDim2.new(0, 4, 0, 4)
     refreshBtn.Parent = window.GuiElems.Content
 
+    local expandAllBtn = Lib.Button.new()
+    expandAllBtn.Text = "Expand All"
+    expandAllBtn.Size = UDim2.new(0, 90, 0, 24)
+    expandAllBtn.Position = UDim2.new(0, 90, 0, 4)
+    expandAllBtn.Parent = window.GuiElems.Content
+
     local countLbl = Instance.new("TextLabel", window.GuiElems.Content)
-    countLbl.Size = UDim2.new(1, -100, 0, 24)
-    countLbl.Position = UDim2.new(0, 90, 0, 4)
+    countLbl.Size = UDim2.new(1, -190, 0, 24)
+    countLbl.Position = UDim2.new(0, 186, 0, 4)
     countLbl.BackgroundTransparency = 1
     countLbl.Text = ""
     countLbl.TextColor3 = Settings.Theme.PlaceholderText
@@ -286,6 +417,25 @@ PE.Init = function()
             createCard(content, p)
         end
     end
+
+    expandAllBtn.OnClick:Connect(function()
+        for _, card in ipairs(content:GetChildren()) do
+            if card:IsA("Frame") then
+                local header = card:GetChildren()[1]
+                if header and header:IsA("TextButton") then
+                    local nm = header.Text:gsub("  .  ","")
+                    if not expanded[nm] then
+                        expanded[nm] = true
+                        local body = card:GetChildren()[2]
+                        if body then
+                            body.Visible = true
+                            header.Text = "  v  "..nm
+                        end
+                    end
+                end
+            end
+        end
+    end)
 
     refreshBtn.OnClick:Connect(refresh)
     service.Players.PlayerAdded:Connect(function() task.wait(0.3) refresh() end)
