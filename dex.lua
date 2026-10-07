@@ -129,13 +129,12 @@ window:SetTitle("Bulk Copier")
 local UIS = game:GetService("UserInputService")
 local VIEWPORT = (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize) or Vector2.new(1280,720)
 local isMobile = UIS.TouchEnabled
-local WIN_W = isMobile and math.clamp(math.floor(VIEWPORT.X * 0.85), 240, 360) or 360
-local WIN_H = isMobile and math.clamp(math.floor(VIEWPORT.Y * 0.7), 300, 480) or 420
-window:Resize(WIN_W, WIN_H)
+window:Resize(isMobile and math.clamp(math.floor(VIEWPORT.X*0.85),240,360) or 360,
+              isMobile and math.clamp(math.floor(VIEWPORT.Y*0.7),300,480) or 420)
 BulkCopier.Window=window
 local content=window.GuiElems.Content
 
--- Toolbar (نفس ستايل Explorer)
+-- Toolbar (نفس Explorer)
 local toolBar=Instance.new("Frame")
 toolBar.Parent=content
 toolBar.Position=UDim2.new(0,0,0,0)
@@ -143,7 +142,6 @@ toolBar.Size=UDim2.new(1,0,0,22)
 toolBar.BackgroundColor3=Settings.Theme.Main1
 toolBar.BorderSizePixel=0
 
--- زرين في التولبار
 local rsBtn=Lib.Button.new()
 rsBtn.Text="RS Only"
 rsBtn.Size=UDim2.new(0.5,-6,0,20)
@@ -156,7 +154,6 @@ allBtn.Size=UDim2.new(0.5,-6,0,20)
 allBtn.Position=UDim2.new(0.5,3,0,1)
 allBtn.Parent=toolBar
 
--- فاصل رقيق تحت التولبار
 local line=Instance.new("Frame")
 line.Parent=content
 line.Position=UDim2.new(0,0,0,22)
@@ -164,7 +161,6 @@ line.Size=UDim2.new(1,0,0,1)
 line.BackgroundColor3=Settings.Theme.Outline1
 line.BorderSizePixel=0
 
--- قائمة السكرول
 local scroll=Instance.new("ScrollingFrame")
 scroll.Parent=content
 scroll.Position=UDim2.new(0,0,0,23)
@@ -175,6 +171,7 @@ scroll.CanvasSize=UDim2.new(0,0,0,0)
 scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
 scroll.ScrollBarThickness=isMobile and 8 or 6
 scroll.ScrollBarImageColor3=Color3.fromRGB(70,70,70)
+scroll.ScrollBarImageTransparency=0.3
 
 local lay=Instance.new("UIListLayout")
 lay.Parent=scroll
@@ -188,7 +185,6 @@ pad.PaddingLeft=UDim.new(0,4)
 pad.PaddingRight=UDim.new(0,4)
 pad.PaddingBottom=UDim.new(0,4)
 
--- شريط الحالة
 local statusLabel=Instance.new("TextLabel")
 statusLabel.Parent=content
 statusLabel.Position=UDim2.new(0,4,1,-22)
@@ -202,7 +198,6 @@ statusLabel.TextSize=13
 statusLabel.TextXAlignment=Enum.TextXAlignment.Center
 statusLabel.TextTruncate=Enum.TextTruncate.AtEnd
 
--- ازرار الفئات بـ Lib.Button (نفس ثيم Dex)
 for i,s in ipairs(SCAN) do
     local btn=Lib.Button.new()
     btn.Text="  "..s[2]
