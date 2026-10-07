@@ -170,7 +170,7 @@ scroll.BorderSizePixel=0
 scroll.CanvasSize=UDim2.new(0,0,0,0)
 scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
 scroll.ScrollBarThickness=isMobile and 8 or 6
-scroll.ScrollBarImageColor3=Color3.fromRGB(70,70,70)
+scroll.ScrollBarImageColor3=Settings.Theme.Outline1
 scroll.ScrollBarImageTransparency=0.3
 
 local lay=Instance.new("UIListLayout")
@@ -367,7 +367,7 @@ local function newScroll()
     s.BackgroundTransparency=1
     s.BorderSizePixel=0
     s.ScrollBarThickness=4
-    s.ScrollBarImageColor3=Color3.fromRGB(70,70,70)
+    s.ScrollBarImageColor3=Settings.Theme.Outline1
     s.CanvasSize=UDim2.new(0,0,0,0)
     local lay=Instance.new("UIListLayout",s)
     lay.Padding=UDim.new(0,4)
@@ -466,7 +466,7 @@ local function addThumb(scroll,kind,id,sizeY)
     local s=sizeY or 110
     local f=Instance.new("Frame",scroll)
     f.Size=UDim2.new(0,s,0,s)
-    f.BackgroundColor3=Color3.fromRGB(240,240,240)
+    f.BackgroundColor3=Settings.Theme.Main2
     f.BorderSizePixel=0
     f.LayoutOrder=#scroll:GetChildren()
     Instance.new("UICorner",f).CornerRadius=UDim.new(0,6)
@@ -531,15 +531,15 @@ local function tryOn(assetId,statusLbl)
     setS("Applying...",Settings.Theme.PlaceholderText)
     realTryOn(assetId,function(ok,reason)
         if ok then
-            setS("OK - visible to all",Color3.fromRGB(100,220,130))
+            setS("OK - visible to all",Settings.Theme.Button)
         elseif reason=="no-cookie" then
-            setS("No cookie - local...",Color3.fromRGB(220,180,100))
+            setS("No cookie - local...",Settings.Theme.Text)
             localTryOn(assetId,function(lok,lr)
-                if lok then setS("OK - local only",Color3.fromRGB(220,180,100))
-                else setS("FAIL: "..tostring(lr),Color3.fromRGB(255,100,110)) end
+                if lok then setS("OK - local only",Settings.Theme.Text)
+                else setS("FAIL: "..tostring(lr),Settings.Theme.Important) end
             end)
         else
-            setS("FAIL: "..tostring(reason),Color3.fromRGB(255,100,110))
+            setS("FAIL: "..tostring(reason),Settings.Theme.Important)
         end
     end)
 end
@@ -602,7 +602,7 @@ end
 
 local function cmdUser(sc,uid)
     local u=fetchJson("https://users.roblox.com/v1/users/"..tostring(uid))
-    if not u then addBlock(sc,"User not found",{color=Color3.fromRGB(255,100,110)}) return end
+    if not u then addBlock(sc,"User not found",{color=Settings.Theme.Important}) return end
     addSection(sc,"USER")
     addThumb(sc,"AvatarHeadShot",uid,110)
     addBlock(sc,"@"..tostring(u.name or "?"),{bold=true,size=17})
@@ -634,7 +634,7 @@ end
 
 local function cmdGame(sc,pid)
     local g=fetchJson("https://games.roblox.com/v1/games?universeIds=0&placeIds="..tostring(pid))
-    if not g or not g.data or not g.data[1] then addBlock(sc,"Game not found",{color=Color3.fromRGB(255,100,110)}) return end
+    if not g or not g.data or not g.data[1] then addBlock(sc,"Game not found",{color=Settings.Theme.Important}) return end
     local gm=g.data[1]
     addSection(sc,"GAME")
     addThumb(sc,"GameIcon",pid,110)
@@ -655,7 +655,7 @@ end
 
 local function cmdGroup(sc,gid)
     local g=fetchJson("https://groups.roblox.com/v1/groups/"..tostring(gid))
-    if not g then addBlock(sc,"Group not found",{color=Color3.fromRGB(255,100,110)}) return end
+    if not g then addBlock(sc,"Group not found",{color=Settings.Theme.Important}) return end
     addSection(sc,"GROUP")
     addThumb(sc,"GroupIcon",gid,110)
     addBlock(sc,tostring(g.name or "?"),{bold=true,size=16})
@@ -677,7 +677,7 @@ local function cmdCatalog(sc,kw)
     addSection(sc,"CATALOG: "..kw)
     local url="https://catalog.roblox.com/v1/search/items/details?Keyword="..HttpSvc:UrlEncode(kw).."&Limit=30&SortType=0"
     local d=fetchJson(url)
-    if not d or not d.data then addBlock(sc,"No results",{color=Color3.fromRGB(255,100,110)}) return end
+    if not d or not d.data then addBlock(sc,"No results",{color=Settings.Theme.Important}) return end
     for _,it in ipairs(d.data) do
         addCatalogRow(sc,it.name or "?",it.price or 0,it.creatorName or "?",it.id,function() navigate("asset:"..tostring(it.id)) end)
     end
@@ -686,7 +686,7 @@ end
 local function cmdAsset(sc,aid)
     addSection(sc,"ASSET")
     local a=fetchJson("https://economy.roblox.com/v2/assets/"..tostring(aid).."/details")
-    if not a then addBlock(sc,"Not found",{color=Color3.fromRGB(255,100,110)}) return end
+    if not a then addBlock(sc,"Not found",{color=Settings.Theme.Important}) return end
     addBlock(sc,tostring(a.Name or "?"),{bold=true,size=16})
     addKV(sc,"AssetID",aid)
     addKV(sc,"Type",tostring(a.AssetTypeId or "?"))
@@ -715,7 +715,7 @@ end
 local function cmdSearch(sc,q)
     addSection(sc,"SEARCH: "..q)
     local d=fetchJson("https://apis.roblox.com/search-api/omni-search?searchQuery="..HttpSvc:UrlEncode(q).."&pageType=all")
-    if not d or not d.searchResults then addBlock(sc,"Search failed",{color=Color3.fromRGB(255,100,110)}) return end
+    if not d or not d.searchResults then addBlock(sc,"Search failed",{color=Settings.Theme.Important}) return end
     local users,games,groups={},{},{}
     for _,g in ipairs(d.searchResults) do
         if g.contents then
@@ -793,7 +793,7 @@ local function doWeb(q)
     clearContent()
     if not data then
         local sc2=newScroll()
-        addBlock(sc2,"Failed: "..url,{color=Color3.fromRGB(255,100,110)})
+        addBlock(sc2,"Failed: "..url,{color=Settings.Theme.Important})
         return
     end
     local sc2=newScroll()
@@ -827,10 +827,10 @@ navigate=function(q)
     if q=="" then return end
     if activeTab=="RBX" then
         local ok,err=pcall(doRbx,q)
-        if not ok then clearContent() local sc=newScroll() addBlock(sc,"RBX err: "..tostring(err):sub(1,100),{color=Color3.fromRGB(255,100,110)}) end
+        if not ok then clearContent() local sc=newScroll() addBlock(sc,"RBX err: "..tostring(err):sub(1,100),{color=Settings.Theme.Important}) end
     else
         local ok,err=pcall(doWeb,q)
-        if not ok then clearContent() local sc=newScroll() addBlock(sc,"WEB err: "..tostring(err):sub(1,100),{color=Color3.fromRGB(255,100,110)}) end
+        if not ok then clearContent() local sc=newScroll() addBlock(sc,"WEB err: "..tostring(err):sub(1,100),{color=Settings.Theme.Important}) end
     end
 end
 
@@ -1125,7 +1125,7 @@ local function openEditWindow(item, parentCard, onDone)
     title.Position = UDim2.new(0, 10, 0, 6)
     title.BackgroundTransparency = 1
     title.Text = "Edit: "..item.name
-    title.TextColor3 = Color3.fromRGB(230,230,230)
+    title.TextColor3 = Settings.Theme.Text
     title.Font = Enum.Font.SourceSansBold
     title.TextSize = 14
     title.TextXAlignment = Enum.TextXAlignment.Left
@@ -1146,7 +1146,7 @@ local function openEditWindow(item, parentCard, onDone)
     box.BackgroundColor3 = Color3.fromRGB(38,38,38)
     box.BorderSizePixel = 0
     box.Text = tostring(old)
-    box.TextColor3 = Color3.fromRGB(230,230,230)
+    box.TextColor3 = Settings.Theme.Text
     box.Font = Enum.Font.Code
     box.TextSize = 13
     box.ClearTextOnFocus = false
@@ -1158,9 +1158,9 @@ local function openEditWindow(item, parentCard, onDone)
     local warnLbl = Instance.new("TextLabel", f)
     warnLbl.Size = UDim2.new(1, -20, 0, 60)
     warnLbl.Position = UDim2.new(0, 10, 0, 90)
-    warnLbl.BackgroundColor3 = Color3.fromRGB(60,45,20)
+    warnLbl.BackgroundColor3 = Settings.Theme.Main2
     warnLbl.Text = "⚠ التعديل يحاول يزامن مع السيرفر أولاً.\nلو اللعبة عندها حماية، التعديل هيفضل محلي\n(يظهر عندك بس). دوس OK للتجربة."
-    warnLbl.TextColor3 = Color3.fromRGB(255,210,100)
+    warnLbl.TextColor3 = Settings.Theme.Text
     warnLbl.Font = Enum.Font.SourceSans
     warnLbl.TextSize = 11
     warnLbl.TextWrapped = true
@@ -1185,7 +1185,7 @@ local function openEditWindow(item, parentCard, onDone)
     local cancelBtn = Instance.new("TextButton", f)
     cancelBtn.Size = UDim2.new(0.5, -15, 0, 30)
     cancelBtn.Position = UDim2.new(0.5, 5, 1, -40)
-    cancelBtn.BackgroundColor3 = Color3.fromRGB(80,80,80)
+    cancelBtn.BackgroundColor3 = Settings.Theme.Button
     cancelBtn.Text = "إلغاء"
     cancelBtn.TextColor3 = Color3.new(1,1,1)
     cancelBtn.Font = Enum.Font.SourceSansBold
@@ -1200,7 +1200,7 @@ local function openEditWindow(item, parentCard, onDone)
     okBtn.MouseButton1Click:Connect(function()
         local parsed = parseInput(box.Text, typ)
         if parsed == nil then
-            box.TextColor3 = Color3.fromRGB(255,100,110)
+            box.TextColor3 = Settings.Theme.Important
             box.Text = "قيمة غلط — جرب تاني"
             return
         end
@@ -1235,7 +1235,7 @@ local function makeRow(parent, item, displayName)
 
     local row = Instance.new("Frame", parent)
     row.Size = UDim2.new(1, -6, 0, 24)
-    row.BackgroundColor3 = Color3.fromRGB(35,35,40)
+    row.BackgroundColor3 = Settings.Theme.Main2
     row.BorderSizePixel = 0
     row.LayoutOrder = #parent:GetChildren()
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 4)
@@ -1277,7 +1277,7 @@ local function makeRow(parent, item, displayName)
     local cpy = Instance.new("TextButton", row)
     cpy.Size = UDim2.new(0, 22, 0, 20)
     cpy.Position = UDim2.new(1, -50, 0, 2)
-    cpy.BackgroundColor3 = Color3.fromRGB(50,90,150)
+    cpy.BackgroundColor3 = Settings.Theme.ListSelection
     cpy.Text = ""
     cpy.TextColor3 = Color3.new(1,1,1)
     cpy.BorderSizePixel = 0
@@ -1292,9 +1292,9 @@ local function makeRow(parent, item, displayName)
     icon1.ImageRectSize = Vector2.new(36, 36)
     cpy.MouseButton1Click:Connect(function()
         copy(tostring(readVal(item)))
-        cpy.BackgroundColor3 = Color3.fromRGB(50,150,70)
+        cpy.BackgroundColor3 = Settings.Theme.Button
         task.wait(0.6)
-        cpy.BackgroundColor3 = Color3.fromRGB(50,90,150)
+        cpy.BackgroundColor3 = Settings.Theme.ListSelection
     end)
 
     -- زر التعديل
@@ -1428,7 +1428,7 @@ local function createCard(parent, p)
 
         local rb = Instance.new("TextButton", body)
         rb.Size = UDim2.new(1, -6, 0, 24)
-        rb.BackgroundColor3 = Color3.fromRGB(50,130,80)
+        rb.BackgroundColor3 = Settings.Theme.Button
         rb.Text = "Rescan"
         rb.TextColor3 = Color3.new(1,1,1)
         rb.Font = Enum.Font.SourceSansBold
@@ -1487,7 +1487,7 @@ PE.Init = function()
     content.BackgroundTransparency = 1
     content.BorderSizePixel = 0
     content.ScrollBarThickness = 5
-    content.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
+    content.ScrollBarImageColor3 = Settings.Theme.Outline1
     content.CanvasSize = UDim2.new(0,0,0,0)
     content.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
@@ -1678,7 +1678,7 @@ local SANDBOX = setmetatable({
         for i = 1, select("#", ...) do
             table.insert(parts, tostring(select(i, ...)))
         end
-        Editor:Log(table.concat(parts, "  "), Color3.fromRGB(230,230,230))
+        Editor:Log(table.concat(parts, "  "), Settings.Theme.Text)
     end,
     warn = function(...)
         local parts = {}
@@ -1696,8 +1696,8 @@ local SANDBOX = setmetatable({
         return snippets[name]
     end,
     help = function()
-        Editor:Log("Editor is sandboxed — no external calls.", Color3.fromRGB(255,210,100))
-        Editor:Log("Use: Apps.Browser.Window:Show()  ·  save('n','code')", Color3.fromRGB(200,200,200))
+        Editor:Log("Editor is sandboxed — no external calls.", Settings.Theme.Text)
+        Editor:Log("Use: Apps.Browser.Window:Show()  ·  save('n','code')", Settings.Theme.Text)
     end,
 }, {__index = function(_, k)
     if k == "request" or k == "http_request" or k == "syn" or k == "http" then
@@ -1758,7 +1758,7 @@ end
 -- ============ run ============
 function Editor:Run(code)
     if not code or code == "" then return end
-    Editor:Log("> "..code, Color3.fromRGB(130,180,255))
+    Editor:Log("> "..code, Settings.Theme.Text)
 
     -- Pre-scan for network patterns in the raw code
     local low = code:lower()
@@ -1771,22 +1771,22 @@ function Editor:Run(code)
     end
 
     if blocked then
-        Editor:Log("════════ BLOCKED ════════", Color3.fromRGB(255,100,110))
-        Editor:Log("Editor is sandboxed.", Color3.fromRGB(255,210,100))
-        Editor:Log("Reason: "..blocked, Color3.fromRGB(255,100,110))
-        Editor:Log("External calls & data exfil are disabled.", Color3.fromRGB(255,210,100))
+        Editor:Log("════════ BLOCKED ════════", Settings.Theme.Important)
+        Editor:Log("Editor is sandboxed.", Settings.Theme.Text)
+        Editor:Log("Reason: "..blocked, Settings.Theme.Important)
+        Editor:Log("External calls & data exfil are disabled.", Settings.Theme.Text)
         return
     end
 
     local fn, err = safeLoadstring(code, "@FLOXIN_EDITOR")
     if not fn then
-        Editor:Log("compile error: "..tostring(err), Color3.fromRGB(255,100,110))
+        Editor:Log("compile error: "..tostring(err), Settings.Theme.Important)
         return
     end
     setfenv(fn, SANDBOX)
     local ok, res = pcall(fn)
     if not ok then
-        Editor:Log("runtime error: "..tostring(res), Color3.fromRGB(255,100,110))
+        Editor:Log("runtime error: "..tostring(res), Settings.Theme.Important)
     elseif res ~= nil then
         Editor:Log(tostring(res), Color3.fromRGB(120,230,140))
     end
@@ -1878,7 +1878,7 @@ local function buildConsole(parent)
     out.BackgroundColor3 = Settings.Theme.Main1
     out.BorderSizePixel = 0
     out.ScrollBarThickness = 5
-    out.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
+    out.ScrollBarImageColor3 = Settings.Theme.Outline1
     out.CanvasSize = UDim2.new(0,0,0,0)
     Instance.new("UICorner", out).CornerRadius = UDim.new(0, 5)
     local lay = Instance.new("UIListLayout", out)
@@ -1937,14 +1937,14 @@ local function buildConsole(parent)
     end
 
     makeBtn(row, "Run", Color3.fromRGB(11,90,175), runCode, 70, 0)
-    makeBtn(row, "Clear Log", Color3.fromRGB(80,50,50), function() Editor:Clear() end, 80, 76)
-    makeBtn(row, "Load Last", Color3.fromRGB(60,60,70), function()
+    makeBtn(row, "Clear Log", Settings.Theme.Button, function() Editor:Clear() end, 80, 76)
+    makeBtn(row, "Load Last", Settings.Theme.Button, function()
         if historyIdx > 1 then
             historyIdx = historyIdx - 1
             codeFrame:SetText(history[historyIdx] or "")
         end
     end, 80, 162)
-    makeBtn(row, "Save WS", Color3.fromRGB(40,120,70), function() Editor:SaveWorkspace() end, 80, 248)
+    makeBtn(row, "Save WS", Settings.Theme.Button, function() Editor:SaveWorkspace() end, 80, 248)
 
     -- keyboard shortcut: Ctrl+Enter to run
     game:GetService("UserInputService").InputBegan:Connect(function(input, gp)
@@ -1965,7 +1965,7 @@ local function buildSnippets(parent)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
     scroll.ScrollBarThickness = 5
-    scroll.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
+    scroll.ScrollBarImageColor3 = Settings.Theme.Outline1
     scroll.CanvasSize = UDim2.new(0,0,0,0)
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     local lay = Instance.new("UIListLayout", scroll)
@@ -2020,7 +2020,7 @@ local function buildSnippets(parent)
             prev.TextTruncate = Enum.TextTruncate.AtEnd
 
             makeBtn(card, "Run", Color3.fromRGB(11,90,175), function() Editor:Run(snippets[n]) end, 50, 0, 4)
-            makeBtn(card, "Del", Color3.fromRGB(160,50,50), function() snippets[n] = nil refresh() end, 50, 0, 4)
+            makeBtn(card, "Del", Settings.Theme.Button, function() snippets[n] = nil refresh() end, 50, 0, 4)
             for _, c in ipairs(card:GetChildren()) do
                 if c:IsA("TextButton") then
                     if c.Text == "Run" then c.Position = UDim2.new(1, -106, 0, 4)
@@ -2041,7 +2041,7 @@ local function buildModules(parent)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
     scroll.ScrollBarThickness = 5
-    scroll.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
+    scroll.ScrollBarImageColor3 = Settings.Theme.Outline1
     scroll.CanvasSize = UDim2.new(0,0,0,0)
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     local lay = Instance.new("UIListLayout", scroll)
@@ -2105,7 +2105,7 @@ local function buildHooks(parent)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
     scroll.ScrollBarThickness = 5
-    scroll.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
+    scroll.ScrollBarImageColor3 = Settings.Theme.Outline1
     scroll.CanvasSize = UDim2.new(0,0,0,0)
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     local lay = Instance.new("UIListLayout", scroll)
@@ -2134,7 +2134,7 @@ local function buildAPI(parent)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
     scroll.ScrollBarThickness = 5
-    scroll.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
+    scroll.ScrollBarImageColor3 = Settings.Theme.Outline1
     scroll.CanvasSize = UDim2.new(0,0,0,0)
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     local lay = Instance.new("UIListLayout", scroll)
@@ -2156,17 +2156,17 @@ local function buildAPI(parent)
         Instance.new("UICorner", l).CornerRadius = UDim.new(0, 4)
     end
 
-    add("Sandbox status", "ACTIVE", Color3.fromRGB(255,100,110))
+    add("Sandbox status", "ACTIVE", Settings.Theme.Important)
     add("", "")
-    add("Blocked:", "", Color3.fromRGB(255,150,150))
-    add("  game:HttpGet / HttpGetAsync", "error", Color3.fromRGB(255,100,110))
-    add("  HttpService:GetAsync", "error", Color3.fromRGB(255,100,110))
-    add("  HttpService:PostAsync", "error", Color3.fromRGB(255,100,110))
-    add("  HttpService:RequestAsync", "error", Color3.fromRGB(255,100,110))
-    add("  request / http_request / syn.request", "nil (removed)", Color3.fromRGB(255,100,110))
-    add("  loadstring with URL", "error", Color3.fromRGB(255,100,110))
-    add("  writefile outside floxin_*", "error", Color3.fromRGB(255,100,110))
-    add("  writefile *.lua / *.rbxm", "error", Color3.fromRGB(255,100,110))
+    add("Blocked:", "", Settings.Theme.Text)
+    add("  game:HttpGet / HttpGetAsync", "error", Settings.Theme.Important)
+    add("  HttpService:GetAsync", "error", Settings.Theme.Important)
+    add("  HttpService:PostAsync", "error", Settings.Theme.Important)
+    add("  HttpService:RequestAsync", "error", Settings.Theme.Important)
+    add("  request / http_request / syn.request", "nil (removed)", Settings.Theme.Important)
+    add("  loadstring with URL", "error", Settings.Theme.Important)
+    add("  writefile outside floxin_*", "error", Settings.Theme.Important)
+    add("  writefile *.lua / *.rbxm", "error", Settings.Theme.Important)
     add("", "")
     add("Allowed:", "", Color3.fromRGB(120,230,140))
     add("  Apps.* · Lib.* · Settings.*", "full access")
@@ -2176,13 +2176,13 @@ local function buildAPI(parent)
     add("  writefile('floxin_*.json/log/txt')", "max 5MB")
     add("  setclipboard", "allowed")
     add("", "")
-    add("Helpers:", "", Color3.fromRGB(255,210,100))
+    add("Helpers:", "", Settings.Theme.Text)
     add("  save('name', 'code')", "snippet save")
     add("  load_snippet('name')", "snippet read")
     add("  help()", "tips")
     add("  Editor:SaveWorkspace()", "manual save")
     add("", "")
-    add("Examples:", "", Color3.fromRGB(130,180,255))
+    add("Examples:", "", Settings.Theme.Text)
     add("  Apps.Browser.Window:Show()")
     add("  Settings.Window.Transparency = 0.5")
     add("  save('openB', \"Apps.Browser.Window:Show()\")")
@@ -2212,21 +2212,21 @@ local function buildSave(parent)
     end
 
     addBtn("Save workspace", Color3.fromRGB(11,90,175), function() Editor:SaveWorkspace() end)
-    addBtn("Load workspace", Color3.fromRGB(60,130,80), function()
+    addBtn("Load workspace", Settings.Theme.Button, function()
         Editor:LoadWorkspace()
         if Editor.RefreshSnippets then Editor:RefreshSnippets() end
         Editor:Log("[workspace] loaded", Color3.fromRGB(120,230,140))
     end)
-    addBtn("Copy session log", Color3.fromRGB(60,60,70), function()
+    addBtn("Copy session log", Settings.Theme.Button, function()
         local lines = {}
         for _, item in ipairs(logBuffer) do table.insert(lines, item.text) end
         if setclipboard then pcall(setclipboard, table.concat(lines, "\n")) end
     end)
-    addBtn("Toggle Auto-save", Color3.fromRGB(160,110,30), function()
+    addBtn("Toggle Auto-save", Settings.Theme.Button, function()
         autoSaveEnabled = not autoSaveEnabled
-        Editor:Log("[autosave] "..(autoSaveEnabled and "ON" or "OFF"), Color3.fromRGB(255,210,100))
+        Editor:Log("[autosave] "..(autoSaveEnabled and "ON" or "OFF"), Settings.Theme.Text)
     end)
-    addBtn("Reset Settings", Color3.fromRGB(180,50,50), function()
+    addBtn("Reset Settings", Settings.Theme.Button, function()
         if Main and Main.ResetSettings then Main.ResetSettings() end
     end)
 end
@@ -2297,8 +2297,8 @@ Editor.Init = function()
     tabBtns["Console"].TextColor3 = Color3.new(1,1,1)
     panels["Console"].Visible = true
 
-    Editor:Log("FLOXIN Editor", Color3.fromRGB(200,150,255))
-    Editor:Log("Sandboxed · no external requests", Color3.fromRGB(255,180,180))
+    Editor:Log("FLOXIN Editor", Settings.Theme.Text)
+    Editor:Log("Sandboxed · no external requests", Settings.Theme.Text)
     Editor:Log("Auto-save ON · source never modified", Color3.fromRGB(150,150,155))
 end
 
@@ -2487,7 +2487,7 @@ local function main()
 	G2L["a"]["Size"] = UDim2.new(1, -8, 1, -55);
 	G2L["a"]["Position"] = UDim2.new(0, 4, 0, 23);
 	G2L["a"]["BorderColor3"] = Color3.fromRGB(0, 0, 0);
-	G2L["a"].ScrollBarImageColor3 = Color3.fromRGB(70, 70, 70)
+	G2L["a"].ScrollBarImageColor3 = Settings.Theme.Outline1
 	G2L["a"]["ScrollBarThickness"] = 16;
 	G2L["a"]["ZIndex"] = 1;
 
@@ -8309,6 +8309,42 @@ local function main()
 			self.GuiElems.Title = guiTopBar.Title
 			self.GuiElems.Close = guiTopBar.Close
 			self.GuiElems.Minimize = guiTopBar.Minimize
+		do
+			local maxBtn = Instance.new("TextButton")
+			maxBtn.Name = "Maximize"
+			maxBtn.Size = UDim2.new(0, 16, 0, 16)
+			maxBtn.Position = UDim2.new(1, -54, 0, 2)
+			maxBtn.BackgroundTransparency = 1
+			maxBtn.BorderSizePixel = 0
+			maxBtn.Text = "\226\150\161"
+			maxBtn.TextColor3 = Color3.fromRGB(220,220,220)
+			maxBtn.TextSize = 14
+			maxBtn.Font = Enum.Font.SourceSansBold
+			maxBtn.AutoButtonColor = false
+			maxBtn.Parent = guiTopBar
+			local maxCorner = Instance.new("UICorner")
+			maxCorner.CornerRadius = UDim.new(0, 4)
+			maxCorner.Parent = maxBtn
+			local maximized = false
+			local savedSize, savedPos
+			maxBtn.MouseButton1Click:Connect(function()
+				if self.Closed then return end
+				if maximized then
+					guiMain.Size = savedSize or UDim2.new(0, self.SizeX, 0, self.SizeY)
+					guiMain.Position = savedPos or UDim2.new(0.4, 0, 0.4, 0)
+					maximized = false
+					maxBtn.Text = "\226\150\161"
+				else
+					savedSize = guiMain.Size
+					savedPos = guiMain.Position
+					guiMain.Size = UDim2.new(1, 0, 1, 0)
+					guiMain.Position = UDim2.new(0, 0, 0, 0)
+					maximized = true
+					maxBtn.Text = "\226\150\160"
+				end
+			end)
+			self.GuiElems.Maximize = maxBtn
+		end
 			self.GuiElems.ResizeControls = guiResizeControls
 			self.ContentPane = guiMain.Content
 			
@@ -15466,7 +15502,7 @@ local function main()
 		ListFrame.ScrollBarThickness = 16
 		ListFrame.BottomImage = ""
 		ListFrame.TopImage = ""
-		ListFrame.ScrollBarImageColor3 = Color3.fromRGB(70, 70, 70)
+		ListFrame.ScrollBarImageColor3 = Settings.Theme.Outline1
 		ListFrame.ScrollBarImageTransparency = 0
 		ListFrame.ZIndex = 2
 		ListFrame.BorderSizePixel = 0
@@ -17289,7 +17325,7 @@ title.Size = UDim2.new(1, -20, 0, 26)
 title.Position = UDim2.new(0, 10, 0, 6)
 title.BackgroundTransparency = 1
 title.Text = "About"
-title.TextColor3 = Color3.fromRGB(230,230,230)
+title.TextColor3 = Settings.Theme.Text
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 15
 title.TextXAlignment = Enum.TextXAlignment.Left
@@ -17322,11 +17358,11 @@ add("Owner      : FLOXIN", 13, true)
 add("Architect  : FLAUX", 13, true)
 Y = Y + 6
 add("Features:", 13, true)
-add("  Explorer / Properties", 12, false, Color3.fromRGB(200,200,200))
-add("  Console / Script Viewer", 12, false, Color3.fromRGB(200,200,200))
-add("  SaveInstance / Model", 12, false, Color3.fromRGB(200,200,200))
-add("  Bulk Copier", 12, false, Color3.fromRGB(200,200,200))
-add("  Browser (Web + Roblox)", 12, false, Color3.fromRGB(200,200,200))
+add("  Explorer / Properties", 12, false, Settings.Theme.Text)
+add("  Console / Script Viewer", 12, false, Settings.Theme.Text)
+add("  SaveInstance / Model", 12, false, Settings.Theme.Text)
+add("  Bulk Copier", 12, false, Settings.Theme.Text)
+add("  Browser (Web + Roblox)", 12, false, Settings.Theme.Text)
 Y = Y + 6
 add("Version 1.0  ·  (c) 2026", 11, false, Color3.fromRGB(140,140,140))
 
@@ -17335,7 +17371,7 @@ closeBtn.Size = UDim2.new(0, 100, 0, 28)
 closeBtn.Position = UDim2.new(0.5, -50, 1, -38)
 closeBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
 closeBtn.Text = "Close"
-closeBtn.TextColor3 = Color3.fromRGB(230,230,230)
+closeBtn.TextColor3 = Settings.Theme.Text
 closeBtn.Font = Enum.Font.SourceSansBold
 closeBtn.TextSize = 13
 closeBtn.BorderSizePixel = 0
