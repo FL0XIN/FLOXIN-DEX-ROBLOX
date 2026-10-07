@@ -15914,28 +15914,55 @@ Main = (function()
 		openButton.MainFrame.BottomFrame.Settings.Visible = false -- hide it for now
 		
 		openButton.MainFrame.BottomFrame.Information.MouseButton1Click:Connect(function()
-			local duration = 1
-			local Infos = {
-				"Contributors >>",
-				"Legacy Author 1",
-				"Legacy Author 2",
-				"FLAUX (DEX V FLOXIN)",
-			}
-			
-			if isInfoCD then return end
-			isInfoCD = true
-			if not infoDexIntro then
-				infoDexIntro = Main.CreateIntro("Running")
-				
-				coroutine.wrap(function()
-					while infoDexIntro do
-						for i,text in Infos do
-							if not infoDexIntro then break end
-							infoDexIntro.SetProgress(text,(1 / #Infos) * i)
-							task.wait(duration)
-						end
-					end
-				end)()
+if Main._InfoWindow and Main._InfoWindow.Gui and Main._InfoWindow.Gui.Parent then
+pcall(function() Main._InfoWindow:Close() end)
+Main._InfoWindow = nil
+return
+end
+local win = Lib.Window.new()
+win:SetTitle("About")
+win:Resize(340, 400)
+win.Resizable = false
+win.Alignable = false
+Main._InfoWindow = win
+local Y = 0
+local function addLine(text, size, bold, color)
+local lbl = Lib.Label.new()
+lbl.Text = text
+lbl.Size = UDim2.new(1, -20, 0, 20)
+lbl.Position = UDim2.new(0, 10, 0, Y)
+lbl.Gui.TextSize = size or 13
+lbl.Gui.TextTruncate = Enum.TextTruncate.AtEnd
+if bold then lbl.Gui.Font = Enum.Font.SourceSansBold end
+if color then lbl.Gui.TextColor3 = color end
+win:Add(lbl)
+Y = Y + (size or 13) + 6
+end
+addLine("DEX V FLOXIN", 22, true)
+addLine("Enhanced Dex Explorer for Roblox", 12, false, Color3.fromRGB(170,170,170))
+Y = Y + 8
+addLine("Owner     : FLOXIN", 13, true)
+addLine("Architect : FLAUX", 13, true)
+Y = Y + 8
+addLine("Features:", 13, true)
+addLine("  Explorer + Properties", 12, false, Color3.fromRGB(200,200,200))
+addLine("  Console + Script Viewer", 12, false, Color3.fromRGB(200,200,200))
+addLine("  SaveInstance + Model Viewer", 12, false, Color3.fromRGB(200,200,200))
+addLine("  Bulk Copier", 12, false, Color3.fromRGB(200,200,200))
+addLine("  In-game Browser (Web + Roblox)", 12, false, Color3.fromRGB(200,200,200))
+Y = Y + 10
+addLine("Version 1.0  ·  (c) 2026 FLOXIN & FLAUX", 11, false, Color3.fromRGB(140,140,140))
+local closeBtn = Lib.Button.new()
+closeBtn.Text = "Close"
+closeBtn.Size = UDim2.new(0, 120, 0, 26)
+closeBtn.Position = UDim2.new(0.5, -60, 1, -34)
+closeBtn.OnClick:Connect(function()
+pcall(function() win:Close() end)
+Main._InfoWindow = nil
+end)
+win:Add(closeBtn, "CloseBtn")
+win:Show()
+end)()
 				
 				Lib.FastWait(1.5)
 				isInfoCD = false
