@@ -13651,6 +13651,13 @@ local function main()
 local function _esc(s)
 return tostring(s):gsub("\\","\\\\"):gsub("\"","\\\""):gsub("\n","\\n")
 end
+local function _num(n)
+if type(n) ~= "number" then return tostring(n) end
+if math.abs(n) < 1e-6 then return "0" end
+local s = string.format("%.6f", n):gsub("0+$", ""):gsub("%.$", "")
+return s
+end
+
 local function _cleanAsset(url)
 if type(url) ~= "string" or url == "" then return url end
 local id = url:match("[?&]id=(%d+)")
@@ -13666,7 +13673,7 @@ table.insert(L, "local "..v.." = Instance.new(\""..obj.ClassName.."\")")
 table.insert(L, v..".Name = \"".._esc(obj.Name).."\"")
 if obj:IsA("BasePart") then
 local s = obj.Size
-table.insert(L, string.format("%s.Size = Vector3.new(%s, %s, %s)", v, tostring(s.X), tostring(s.Y), tostring(s.Z)))
+table.insert(L, string.format("%s.Size = Vector3.new(%s, %s, %s)", v, _num(s.X), _num(s.Y), _num(s.Z)))
 local x, y, z, R00, R01, R02, R10, R11, R12, R20, R21, R22 = obj.CFrame:GetComponents()
 table.insert(L, string.format("%s.CFrame = CFrame.new(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
 v, tostring(x),tostring(y),tostring(z),tostring(R00),tostring(R01),tostring(R02),
@@ -13691,7 +13698,7 @@ end
 end
 if obj:IsA("Attachment") then
 local p = obj.Position
-table.insert(L, string.format("%s.Position = Vector3.new(%s, %s, %s)", v, tostring(p.X), tostring(p.Y), tostring(p.Z)))
+table.insert(L, string.format("%s.Position = Vector3.new(%s, %s, %s)", v, _num(p.X), _num(p.Y), _num(p.Z)))
 end
 if obj:IsA("ValueBase") and obj.Value ~= nil then
 local t = typeof(obj.Value)
@@ -13705,7 +13712,7 @@ end
 end
 local SKIP = {
 Vector3Value = true, NoCollisionConstraint = true,
-BallSocketConstraint = true, AnimationConstraint = true,
+BallSocketConstraint = true, AnimationConstraint = true, RigidConstraint = true,
 BillboardGui = true, FaceControls = true,
 WrapTarget = true, StringValue = true,
 UIStroke = true, TextLabel = true, UIGradient = true,
