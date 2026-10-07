@@ -17341,7 +17341,7 @@ Main = (function()
 	Main.Elevated = false
 	Main.AllowDraggableOnMobile = true
 	Main.MissingEnv = {}
-	Main.Version = "FLOXIN v1.0"
+	Main.Version = "FLOXIN v12"
 	Main.Mouse = plr:GetMouse()
 	Main.AppControls = {}
 	Main.Apps = Apps
@@ -18192,7 +18192,7 @@ Main = (function()
 			{8,"Frame",{BackgroundColor3=Color3.new(0.20392157137394,0.20392157137394,0.20392157137394),BorderSizePixel=0,Name="ProgressBar",Parent={3},Position=UDim2.new(0,110,0,145),Size=UDim2.new(0,0,0,4),}},
 			{9,"Frame",{BackgroundColor3=Color3.new(0.2392156869173,0.56078433990479,0.86274510622025),BorderSizePixel=0,Name="Bar",Parent={8},Size=UDim2.new(0,0,1,0),}},
 			{10,"ImageLabel",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Image="rbxassetid://2764171053",ImageColor3=Color3.new(0.17647059261799,0.17647059261799,0.17647059261799),Parent={8},ScaleType=1,Size=UDim2.new(1,0,1,0),SliceCenter=Rect.new(2,2,254,254),}},
-			{11,"TextLabel",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Font=3,Name="Creator",Parent={2},Position=UDim2.new(1,-110,1,-20),Size=UDim2.new(0,105,0,20),Text="Rebranded for WORM.",TextColor3=Color3.new(1,1,1),TextSize=14,TextXAlignment=1,}},
+			{11,"TextLabel",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Font=3,Name="Creator",Parent={2},Position=UDim2.new(1,-110,1,-20),Size=UDim2.new(0,105,0,20),Text="Rebranded for FLOXIN.",TextColor3=Color3.new(1,1,1),TextSize=14,TextXAlignment=1,}},
 			{12,"UIGradient",{Parent={11},Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1,0),NumberSequenceKeypoint.new(1,1,0),}),}},
 			{13,"TextLabel",{BackgroundColor3=Color3.new(1,1,1),BackgroundTransparency=1,Font=3,Name="Version",Parent={2},Position=UDim2.new(1,-110,1,-35),Size=UDim2.new(0,105,0,20),Text=Main.Version,TextColor3=Color3.new(1,1,1),TextSize=14,TextXAlignment=1,}},
 			{14,"UIGradient",{Parent={13},Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1,0),NumberSequenceKeypoint.new(1,1,0),}),}},
@@ -18573,7 +18573,7 @@ add("  SaveInstance / Model", 12, false, Settings.Theme.Text)
 add("  Bulk Copier", 12, false, Settings.Theme.Text)
 add("  Browser (Web + Roblox)", 12, false, Settings.Theme.Text)
 Y = Y + 6
-add("Version 1.0  ·  (c) 2026", 11, false, Color3.fromRGB(140,140,140))
+add("FLOXIN v12  ·  (c) 2026", 11, false, Color3.fromRGB(140,140,140))
 
 local closeBtn = Instance.new("TextButton", frame)
 closeBtn.Size = UDim2.new(0, 100, 0, 28)
@@ -18753,11 +18753,11 @@ end
 		Properties.Init()
 		ScriptViewer.Init()
 		Console.Init()
-		Browser.Init()
-		PlayersExplorer.Init()
-		Editor.Init()
-		ModelEditor.Init()
-		DeveloperScripts.Init()
+		task.spawn(function() pcall(function() Browser.Init() end) end)
+		task.spawn(function() pcall(function() PlayersExplorer.Init() end) end)
+		task.spawn(function() pcall(function() Editor.Init() end) end)
+		task.spawn(function() pcall(function() ModelEditor.Init() end) end)
+task.spawn(function() pcall(function() DeveloperScripts.Init() end) end)
 		SaveInstance.Init()
 		ModelViewer.Init()
 		BulkCopier.Init()
