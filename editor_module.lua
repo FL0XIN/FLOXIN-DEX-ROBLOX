@@ -130,6 +130,80 @@ local SANDBOX = setmetatable({
     Settings = Settings,
     Main = Main,
 
+    -- ========= Bridge: Explorer + 3D Viewer =========
+    Select = function(obj)
+        if not obj then return nil, "no object" end
+        if not Apps.Explorer then return nil, "Explorer not loaded" end
+        local nodes = Explorer and _G._DEX_NODES
+        -- best-effort: use Explorer.ViewObj
+        pcall(function() Apps.Explorer.ViewObj(obj) end)
+        pcall(function()
+            if Apps.Explorer.Selection then
+                local n = (_G.nodes and _G.nodes[obj]) or nil
+                if n then Apps.Explorer.Selection:Set(n) end
+            end
+        end)
+        return "selected: " .. obj:GetFullName()
+    end,
+
+    Preview = function(obj)
+        if not obj then
+            return nil, "no object passed"
+        end
+        if type(obj) ~= "userdata" or not obj:IsA("Instance") then
+            return nil, "not an Instance"
+        end
+        if not (obj:IsA("BasePart") or obj:IsA("Model")) then
+            return nil, "only BasePart or Model can be previewed"
+        end
+        if not Apps.ModelViewer then
+            return nil, "ModelViewer not loaded"
+        end
+        local ok, err = pcall(function() Apps.ModelViewer.ViewModel(obj) end)
+        if not ok then return nil, "ViewModel error: " .. tostring(err) end
+        return "previewing: " .. obj:GetFullName()
+    end,
+
+    PreviewSelected = function()
+        if not Apps.Explorer or not Apps.Explorer.Selection then
+            return nil, "no selection available"
+        end
+        local list = Apps.Explorer.Selection.List
+        if not list or #list == 0 then
+            return nil, "nothing selected in Explorer"
+        end
+        local obj = list[1].Obj
+        return Editor.Sandbox.Preview(obj)
+    end,
+
+    GetSelected = function()
+        if not Apps.Explorer or not Apps.Explorer.Selection then
+            return nil, "no selection available"
+        end
+        local list = Apps.Explorer.Selection.List
+        if not list or #list == 0 then
+            return nil, "nothing selected"
+        end
+        return list[1].Obj
+    end,
+
+    ClickPartSelect = function(enabled)
+        if not Main.CreateApp then return nil, "no CreateApp" end
+        -- toggle click part selection via Main menu (fire the button)
+        -- We do best-effort: use Main.MenuApps if available
+        local menu = Main.MenuApps
+        if not menu then return nil, "menu apps not exposed" end
+        local app = menu["Click part to select"]
+        if not app then return nil, "Click part app not found" end
+        if enabled then
+            app:Enable()
+            return "click-part enabled"
+        else
+            app:Disable()
+            return "click-part disabled"
+        end
+    end,
+
     HttpService = safeHttpService,
 
     loadstring = safeLoadstring,
@@ -176,7 +250,12 @@ local SANDBOX = setmetatable({
     end,
     help = function()
         Editor:Log("Editor is sandboxed — no external calls.", Color3.fromRGB(255,210,100))
-        Editor:Log("Use: Apps.Browser.Window:Show()  ·  save('n','code')", Color3.fromRGB(200,200,200))
+        Editor:Log("Bridge:", Color3.fromRGB(255,210,100))
+        Editor:Log("  Preview(instance) — open in 3D Viewer", Color3.fromRGB(200,200,200))
+        Editor:Log("  PreviewSelected() — preview Explorer selection", Color3.fromRGB(200,200,200))
+        Editor:Log("  Select(instance) — select in Explorer", Color3.fromRGB(200,200,200))
+        Editor:Log("  GetSelected() — get current Explorer selection", Color3.fromRGB(200,200,200))
+        Editor:Log("  ClickPartSelect(true/false) — toggle click-part mode", Color3.fromRGB(200,200,200))
     end,
 }, {__index = function(_, k)
     if k == "request" or k == "http_request" or k == "syn" or k == "http" then
