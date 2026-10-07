@@ -13676,8 +13676,8 @@ local s = obj.Size
 table.insert(L, string.format("%s.Size = Vector3.new(%s, %s, %s)", v, _num(s.X), _num(s.Y), _num(s.Z)))
 local x, y, z, R00, R01, R02, R10, R11, R12, R20, R21, R22 = obj.CFrame:GetComponents()
 table.insert(L, string.format("%s.CFrame = CFrame.new(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-v, tostring(x),tostring(y),tostring(z),tostring(R00),tostring(R01),tostring(R02),
-tostring(R10),tostring(R11),tostring(R12),tostring(R20),tostring(R21),tostring(R22)))
+v, _num(x),_num(y),_num(z),_num(R00),_num(R01),_num(R02),
+_num(R10),_num(R11),_num(R12),_num(R20),_num(R21),_num(R22)))
 local c = obj.Color
 table.insert(L, string.format("%s.Color = Color3.fromRGB(%d,%d,%d)", v, math.floor(c.R*255+0.5), math.floor(c.G*255+0.5), math.floor(c.B*255+0.5)))
 table.insert(L, v..".Material = Enum.Material."..obj.Material.Name)
