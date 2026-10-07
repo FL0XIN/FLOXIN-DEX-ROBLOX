@@ -634,6 +634,11 @@ end
 return Browser
 end
 
+return {InitDeps=initDeps, InitAfterMain=initAfterMain, Main=main}
+end,
+
+end
+
 '''
 
 # ============ PATCHES ============
