@@ -15914,66 +15914,95 @@ Main = (function()
 		openButton.MainFrame.BottomFrame.Settings.Visible = false -- hide it for now
 		
 		openButton.MainFrame.BottomFrame.Information.MouseButton1Click:Connect(function()
-if Main._InfoWindow and Main._InfoWindow.Gui and Main._InfoWindow.Gui.Parent then
-pcall(function() Main._InfoWindow:Close() end)
-Main._InfoWindow = nil
+if Main._AboutGui and Main._AboutGui.Parent then
+Main._AboutGui:Destroy()
+Main._AboutGui = nil
 return
 end
-local win = Lib.Window.new()
-win:SetTitle("About")
-win:Resize(340, 400)
-win.Resizable = false
-win.Alignable = false
-Main._InfoWindow = win
-local Y = 0
-local function addLine(text, size, bold, color)
-local lbl = Lib.Label.new()
-lbl.Text = text
-lbl.Size = UDim2.new(1, -20, 0, 20)
-lbl.Position = UDim2.new(0, 10, 0, Y)
-lbl.Gui.TextSize = size or 13
-lbl.Gui.TextTruncate = Enum.TextTruncate.AtEnd
-if bold then lbl.Gui.Font = Enum.Font.SourceSansBold end
-if color then lbl.Gui.TextColor3 = color end
-win:Add(lbl)
-Y = Y + (size or 13) + 6
+local sg = Instance.new("ScreenGui")
+sg.Name = "FLOXIN_About"
+sg.IgnoreGuiInset = true
+sg.ResetOnSpawn = false
+sg.DisplayOrder = 999999
+Lib.ShowGui(sg)
+Main._AboutGui = sg
+
+local frame = Instance.new("Frame", sg)
+frame.Size = UDim2.new(0, 300, 0, 400)
+frame.Position = UDim2.new(0.5, -150, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(45,45,45)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+local fc = Instance.new("UICorner", frame)
+fc.CornerRadius = UDim.new(0, 8)
+local stroke = Instance.new("UIStroke", frame)
+stroke.Color = Color3.fromRGB(30,30,30)
+stroke.Thickness = 1
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, -20, 0, 26)
+title.Position = UDim2.new(0, 10, 0, 6)
+title.BackgroundTransparency = 1
+title.Text = "About"
+title.TextColor3 = Color3.fromRGB(230,230,230)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 15
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+local sep = Instance.new("Frame", frame)
+sep.Size = UDim2.new(1, -20, 0, 1)
+sep.Position = UDim2.new(0, 10, 0, 34)
+sep.BackgroundColor3 = Color3.fromRGB(30,30,30)
+sep.BorderSizePixel = 0
+
+local Y = 44
+local function add(text, size, bold, color)
+local l = Instance.new("TextLabel", frame)
+l.Size = UDim2.new(1, -20, 0, size + 4)
+l.Position = UDim2.new(0, 10, 0, Y)
+l.BackgroundTransparency = 1
+l.Text = text
+l.TextColor3 = color or Color3.fromRGB(220,220,220)
+l.Font = bold and Enum.Font.SourceSansBold or Enum.Font.SourceSans
+l.TextSize = size
+l.TextXAlignment = Enum.TextXAlignment.Left
+l.TextTruncate = Enum.TextTruncate.AtEnd
+Y = Y + size + 8
 end
-addLine("DEX V FLOXIN", 22, true)
-addLine("Enhanced Dex Explorer for Roblox", 12, false, Color3.fromRGB(170,170,170))
-Y = Y + 8
-addLine("Owner     : FLOXIN", 13, true)
-addLine("Architect : FLAUX", 13, true)
-Y = Y + 8
-addLine("Features:", 13, true)
-addLine("  Explorer + Properties", 12, false, Color3.fromRGB(200,200,200))
-addLine("  Console + Script Viewer", 12, false, Color3.fromRGB(200,200,200))
-addLine("  SaveInstance + Model Viewer", 12, false, Color3.fromRGB(200,200,200))
-addLine("  Bulk Copier", 12, false, Color3.fromRGB(200,200,200))
-addLine("  In-game Browser (Web + Roblox)", 12, false, Color3.fromRGB(200,200,200))
-Y = Y + 10
-addLine("Version 1.0  ·  (c) 2026 FLOXIN & FLAUX", 11, false, Color3.fromRGB(140,140,140))
-local closeBtn = Lib.Button.new()
+
+add("DEX V FLOXIN", 22, true, Color3.fromRGB(255,255,255))
+add("Enhanced Dex Explorer", 12, false, Color3.fromRGB(170,170,170))
+Y = Y + 6
+add("Owner      : FLOXIN", 13, true)
+add("Architect  : FLAUX", 13, true)
+Y = Y + 6
+add("Features:", 13, true)
+add("  Explorer / Properties", 12, false, Color3.fromRGB(200,200,200))
+add("  Console / Script Viewer", 12, false, Color3.fromRGB(200,200,200))
+add("  SaveInstance / Model", 12, false, Color3.fromRGB(200,200,200))
+add("  Bulk Copier", 12, false, Color3.fromRGB(200,200,200))
+add("  Browser (Web + Roblox)", 12, false, Color3.fromRGB(200,200,200))
+Y = Y + 6
+add("Version 1.0  ·  (c) 2026", 11, false, Color3.fromRGB(140,140,140))
+
+local closeBtn = Instance.new("TextButton", frame)
+closeBtn.Size = UDim2.new(0, 100, 0, 28)
+closeBtn.Position = UDim2.new(0.5, -50, 1, -38)
+closeBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
 closeBtn.Text = "Close"
-closeBtn.Size = UDim2.new(0, 120, 0, 26)
-closeBtn.Position = UDim2.new(0.5, -60, 1, -34)
-closeBtn.OnClick:Connect(function()
-pcall(function() win:Close() end)
-Main._InfoWindow = nil
+closeBtn.TextColor3 = Color3.fromRGB(230,230,230)
+closeBtn.Font = Enum.Font.SourceSansBold
+closeBtn.TextSize = 13
+closeBtn.BorderSizePixel = 0
+closeBtn.AutoButtonColor = false
+local cc = Instance.new("UICorner", closeBtn)
+cc.CornerRadius = UDim.new(0, 6)
+closeBtn.MouseButton1Click:Connect(function()
+if sg and sg.Parent then sg:Destroy() end
+Main._AboutGui = nil
 end)
-win:Add(closeBtn, "CloseBtn")
-win:Show()
 end)()
-				
-				Lib.FastWait(1.5)
-				isInfoCD = false
-			else
-				coroutine.wrap(function()
-					infoDexIntro.Close()
-					infoDexIntro = nil
-					
-					Lib.FastWait(1.5)
-					isInfoCD = false
-				end)()
 			end
 		end)
 
