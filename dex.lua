@@ -1,10 +1,10 @@
 --[[
-	DeX Explorer
+	FLOXIN Explorer
 	Version 1.0
 	
 	Developed by F
 	
-	DeX Explorer is a revival of Moon's and Chillz's Dex, made to fulfill Moon's Dex prophecy.
+	FLOXIN Explorer is a revival of Moon's and Chillz's Dex, made to fulfill Moon's Dex prophecy.
 ]]
 
 local selection
@@ -47,6 +47,142 @@ cloneref = cloneref or function(ref)
 end
 
 local EmbeddedModules = {
+["BulkCopier"] = function()
+--[[ Bulk Copier Module ]]
+local Main,Lib,Apps,Settings
+local Explorer, Properties, ScriptViewer, Notebook
+local API,RMD,env,service,plr,create,createSimple
+local function initDeps(d) Main=d.Main Lib=d.Lib Apps=d.Apps Settings=d.Settings API=d.API RMD=d.RMD env=d.env service=d.service plr=d.plr create=d.create createSimple=d.createSimple end
+local function initAfterMain() Explorer=Apps.Explorer Properties=Apps.Properties ScriptViewer=Apps.ScriptViewer Notebook=Apps.Notebook end
+local function main()
+local BulkCopier={}
+local window,statusLabel
+local function getPath(o)
+local ok,p=pcall(Explorer.GetInstancePath,o)
+if ok and type(p)=="string" and #p>0 then return p end
+return o:GetFullName()
+end
+local SCAN={
+{"RemoteEvent","Remote Events",false},
+{"RemoteFunction","Remote Functions",false},
+{"UnreliableRemoteEvent","Unreliable Remotes",false},
+{"BasePart","Parts",true},
+{"Model","Models",false},
+{"Sound","Sounds",false},
+{"Script","Scripts",false},
+{"LocalScript","LocalScripts",false},
+{"ModuleScript","ModuleScripts",false},
+{"Folder","Folders",false},
+{"GuiObject","GUI Objects",true},
+{"Tool","Tools",false},
+{"Animation","Animations",false},
+{"ValueBase","Values",true},
+{"ParticleEmitter","Particles",false},
+{"Attachment","Attachments",false},
+{"Motor6D","Motor6D",false},
+{"ProximityPrompt","ProximityPrompts",false},
+}
+local function scanAll()
+local buckets={}
+for i=1,#SCAN do buckets[i]={} end
+local ok,descs=pcall(function() return game:GetDescendants() end)
+if not ok or not descs then return buckets end
+local classMap={}
+for i,s in ipairs(SCAN) do if not s[3] then classMap[s[1]]=i end end
+for _,o in ipairs(descs) do
+local cn=o.ClassName
+local idx=classMap[cn]
+if idx then
+table.insert(buckets[idx],o)
+else
+for i,s in ipairs(SCAN) do
+if s[3] then
+local ok2,m=pcall(function() return o:IsA(s[1]) end)
+if ok2 and m then table.insert(buckets[i],o) break end
+end
+end
+end
+end
+return buckets
+end
+local function copyTxt(txt,label)
+if env.setclipboard then env.setclipboard(txt) end
+if statusLabel then statusLabel.Text="Copied: "..label end
+end
+BulkCopier.Init=function()
+window=Lib.Window.new()
+window:SetTitle("Bulk Copier")
+window:Resize(400,460)
+BulkCopier.Window=window
+local content=window.GuiElems.Content
+local scroll=Instance.new("ScrollingFrame")
+scroll.Parent=content
+scroll.Size=UDim2.new(1,0,1,-30)
+scroll.BackgroundTransparency=1
+scroll.BorderSizePixel=0
+scroll.CanvasSize=UDim2.new(0,0,0,0)
+scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
+scroll.ScrollBarThickness=8
+scroll.ScrollBarImageColor3=Color3.fromRGB(80,80,80)
+local lay=Instance.new("UIListLayout")
+lay.Parent=scroll
+lay.Padding=UDim.new(0,4)
+lay.SortOrder=Enum.SortOrder.LayoutOrder
+local pad=Instance.new("UIPadding")
+pad.Parent=scroll
+pad.PaddingTop=UDim.new(0,6)
+pad.PaddingLeft=UDim.new(0,6)
+pad.PaddingRight=UDim.new(0,6)
+statusLabel=Instance.new("TextLabel")
+statusLabel.Parent=content
+statusLabel.Position=UDim2.new(0,4,1,-24)
+statusLabel.Size=UDim2.new(1,-8,0,20)
+statusLabel.BackgroundTransparency=1
+statusLabel.Text="Tap a category to copy all its paths"
+statusLabel.TextColor3=Color3.fromRGB(200,200,200)
+statusLabel.Font=Enum.Font.SourceSans
+statusLabel.TextSize=14
+statusLabel.TextXAlignment=Enum.TextXAlignment.Center
+local allBtn=Lib.Button.new()
+allBtn.Text="COPY EVERYTHING"
+allBtn.Size=UDim2.new(1,-4,0,24)
+allBtn.Parent=scroll
+allBtn.OnClick:Connect(function()
+local b=scanAll()
+local out={}
+local total=0
+for i,s in ipairs(SCAN) do
+local list=b[i]
+if #list>0 then
+table.insert(out,"=== "..s[2].." ("..#list..") ===")
+for j=1,#list do table.insert(out,getPath(list[j])) total=total+1 end
+table.insert(out,"")
+end
+end
+copyTxt(table.concat(out,"\n"),total.." items (ALL)")
+end)
+for i,s in ipairs(SCAN) do
+local btn=Lib.Button.new()
+btn.Text=s[2]
+btn.Size=UDim2.new(1,-4,0,22)
+btn.Parent=scroll
+local idx=i
+btn.OnClick:Connect(function()
+local b=scanAll()
+local list=b[idx]
+local paths={}
+for j=1,#list do table.insert(paths,getPath(list[j])) end
+table.sort(paths)
+copyTxt(table.concat(paths,"\n"),#paths.." "..SCAN[idx][2])
+end)
+end
+end
+return BulkCopier
+end
+
+return {InitDeps=initDeps,InitAfterMain=initAfterMain,Main=main}
+end,
+
 ["Console"] = function()
 --[[
 	Console Module
@@ -13826,7 +13962,7 @@ end
 Main = (function()
 	local Main = {}
 
-	Main.ModuleList = {"Explorer","Properties","ScriptViewer","Console","SaveInstance","ModelViewer"}
+	Main.ModuleList = {"Explorer","Properties","ScriptViewer","Console","SaveInstance","ModelViewer","BulkCopier"}
 	Main.Elevated = false
 	Main.AllowDraggableOnMobile = true
 	Main.MissingEnv = {}
@@ -14053,6 +14189,7 @@ Main = (function()
 		Console = Apps.Console
 		SaveInstance = Apps.SaveInstance
 		ModelViewer = Apps.ModelViewer
+		BulkCopier = Apps.BulkCopier
 		Notebook = Apps.Notebook
 		
 		--SecretServicePanel = Apps.SecretServicePanel
@@ -14063,6 +14200,7 @@ Main = (function()
 			Console = Console,
 			SaveInstance = SaveInstance,
 			ModelViewer = ModelViewer,
+			BulkCopier = BulkCopier,
 			Notebook = Notebook,
 			
 			--SecretServicePanel = SecretServicePanel,
@@ -15046,6 +15184,8 @@ Main = (function()
 		
 		Main.CreateApp({Name = "3D Viewer", IconMap = Explorer.LegacyClassIcons, Icon = 54, Window = ModelViewer.Window})
 
+		Main.CreateApp({Name = "Bulk Copier", IconMap = Main.LargeIcons, Icon = "Watcher", Window = BulkCopier.Window})
+
 		--Main.CreateApp({Name = "Secret Service Panel", IconMap = Main.LargeIcons, Icon = "Output", Window = SecretServicePanel.Window})
 
 
@@ -15164,6 +15304,7 @@ Main = (function()
 		Console.Init()
 		SaveInstance.Init()
 		ModelViewer.Init()
+		BulkCopier.Init()
 		
 		--SecretServicePanel.Init()
 		
