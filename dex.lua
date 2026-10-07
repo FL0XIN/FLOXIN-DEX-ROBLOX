@@ -13704,15 +13704,14 @@ WrapTarget = true, StringValue = true,
 UIStroke = true, TextLabel = true, UIGradient = true,
 UICorner = true, UIPadding = true, UIListLayout = true,
 }
-for _, child in ipairs(obj:GetChildren()) do
+			for _, child in ipairs(obj:GetChildren()) do
 if not SKIP[child.ClassName] then
 local code, cvar = _serialize(child, counter)
 table.insert(L, code)
-table.insert(L, cvar..".Parent = "..v)
+					table.insert(L, cvar..".Parent = "..v)
 end
 end
-return table.concat(L, "
-"), v
+return table.concat(L, string.char(10)), v
 end
 
 local copyCodeBtn = Instance.new("TextButton")
