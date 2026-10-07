@@ -537,7 +537,11 @@ end
 Browser.Init=function()
     window=Lib.Window.new()
     window:SetTitle("Browser")
-    window:Resize(480,520)
+    local _vp=workspace.CurrentCamera.ViewportSize
+    local _mobile=game:GetService("UserInputService").TouchEnabled
+    local _W=_mobile and math.clamp(math.floor(_vp.X*0.92),240,380) or 460
+    local _H=_mobile and math.clamp(math.floor(_vp.Y*0.52),240,360) or 480
+    window:Resize(_W,_H)
     Browser.Window=window
     local content=window.GuiElems.Content
 
