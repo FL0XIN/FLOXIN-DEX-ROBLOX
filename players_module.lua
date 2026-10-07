@@ -30,12 +30,16 @@ local function buildInfo(p)
         local hum = char:FindFirstChildOfClass("Humanoid")
         if hum then
             info.Health = math.floor(hum.Health).."/"..math.floor(hum.MaxHealth)
-        else info.Health = "?" end
+        else
+            info.Health = "?"
+        end
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if hrp then
             local pos = hrp.Position
             info.Position = string.format("%.0f, %.0f, %.0f", pos.X, pos.Y, pos.Z)
-        else info.Position = "?" end
+        else
+            info.Position = "?"
+        end
     else
         info.Health = "-"
         info.Position = "-"
@@ -104,7 +108,7 @@ local function createRow(parent, p)
         if expanded then
             rebuildBody()
             body.Visible = true
-            header.Text = "  "..p.Name.."  ▼"
+            header.Text = "  "..p.Name.."  v"
         else
             body.Visible = false
             header.Text = "  "..p.Name
@@ -114,31 +118,16 @@ local function createRow(parent, p)
     if expanded then
         rebuildBody()
         body.Visible = true
-        header.Text = "  "..p.Name.."  ▼"
+        header.Text = "  "..p.Name.."  v"
     end
 end
 
 PE.Init = function()
     window = Lib.Window.new()
     window:SetTitle("Players Explorer")
-    local vp = workspace.CurrentCamera.ViewportSize
     local isMobile = game:GetService("UserInputService").TouchEnabled
     window:Resize(isMobile and 300 or 360, isMobile and 380 or 460)
     PE.Window = window
-
-    content = Instance.new("ScrollingFrame", window.GuiElems.Content)
-    content.Size = UDim2.new(1, -8, 1, -8)
-    content.Position = UDim2.new(0, 4, 0, 4)
-    content.BackgroundTransparency = 1
-    content.BorderSizePixel = 0
-    content.ScrollBarThickness = 5
-    content.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
-    content.CanvasSize = UDim2.new(0,0,0,0)
-    content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-
-    local lay = Instance.new("UIListLayout", content)
-    lay.Padding = UDim.new(0, 4)
-    lay.SortOrder = Enum.SortOrder.LayoutOrder
 
     local refreshBtn = Lib.Button.new()
     refreshBtn.Text = "Refresh"
@@ -146,25 +135,36 @@ PE.Init = function()
     refreshBtn.Position = UDim2.new(0, 4, 0, 4)
     refreshBtn.Parent = window.GuiElems.Content
 
-    local count = Instance.new("TextLabel", window.GuiElems.Content)
-    count.Size = UDim2.new(1, -100, 0, 22)
-    count.Position = UDim2.new(0, 90, 0, 4)
-    count.BackgroundTransparency = 1
-    count.Text = ""
-    count.TextColor3 = Settings.Theme.PlaceholderText
-    count.Font = Enum.Font.SourceSans
-    count.TextSize = 12
-    count.TextXAlignment = Enum.TextXAlignment.Left
+    local countLbl = Instance.new("TextLabel", window.GuiElems.Content)
+    countLbl.Size = UDim2.new(1, -100, 0, 22)
+    countLbl.Position = UDim2.new(0, 90, 0, 4)
+    countLbl.BackgroundTransparency = 1
+    countLbl.Text = ""
+    countLbl.TextColor3 = Settings.Theme.PlaceholderText
+    countLbl.Font = Enum.Font.SourceSans
+    countLbl.TextSize = 12
+    countLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    content.Position = UDim2.new(0, 4, 0, 32)
+    content = Instance.new("ScrollingFrame", window.GuiElems.Content)
     content.Size = UDim2.new(1, -8, 1, -38)
+    content.Position = UDim2.new(0, 4, 0, 32)
+    content.BackgroundTransparency = 1
+    content.BorderSizePixel = 0
+    content.ScrollBarThickness = 5
+    content.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
+    content.CanvasSize = UDim2.new(0, 0, 0, 0)
+    content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+    local lay = Instance.new("UIListLayout", content)
+    lay.Padding = UDim.new(0, 4)
+    lay.SortOrder = Enum.SortOrder.LayoutOrder
 
     local function refresh()
         for _, c in ipairs(content:GetChildren()) do
             if c:IsA("Frame") then c:Destroy() end
         end
         local plrs = service.Players:GetPlayers()
-        count.Text = #plrs.." player(s)"
+        countLbl.Text = #plrs.." player(s)"
         for _, p in ipairs(plrs) do
             createRow(content, p)
         end
@@ -178,4 +178,7 @@ end
 
 return PE
 end
+
+return {InitDeps=initDeps, InitAfterMain=initAfterMain, Main=main}
+end,
 
