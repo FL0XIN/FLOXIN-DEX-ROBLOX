@@ -1,0 +1,18 @@
+{
+  "scripts": [
+    {
+      "name": "Hello FLOXIN",
+      "author": "FLOXIN",
+      "description": "Simple greeting demo",
+      "tags": ["demo", "starter"],
+      "path": "hello_floxin.lua"
+    },
+    {
+      "name": "Part Spawner",
+      "author": "FLOXIN",
+      "description": "Spawns 10 parts around you",
+      "tags": ["utility", "parts"],
+      "path": "part_spawner.lua"
+    }
+  ]
+}
