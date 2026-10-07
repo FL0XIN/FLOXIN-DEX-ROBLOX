@@ -2,7 +2,7 @@
 	DeX Explorer
 	Version 1.0
 	
-	Developed by Fusion
+	Developed by F
 	
 	DeX Explorer is a revival of Moon's and Chillz's Dex, made to fulfill Moon's Dex prophecy.
 ]]
