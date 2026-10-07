@@ -1,98 +1,145 @@
-import base64, os
+with open('dex_raw.lua', 'r', encoding='utf-8') as f:
+    raw = f.read()
 
-with open('dex.source.lua', 'rb') as f:
-    src = f.read()
+OUT = '''-- FLOXIN · compare raw vs decoded
+local CoreGui = game:GetService("CoreGui")
+local parent = (gethui and select(2, pcall(gethui))) or CoreGui
 
-KEY = b'FLOXIN_FLAUX_2026_SECRET_KEY_v1'
-xored = bytes(b ^ KEY[i % len(KEY)] for i, b in enumerate(src))
-b64 = base64.b64encode(xored).decode('ascii')
+local Theme = {
+    Main1 = Color3.fromRGB(52,52,52),
+    Main2 = Color3.fromRGB(45,45,45),
+    Outline1 = Color3.fromRGB(33,33,33),
+    Text = Color3.fromRGB(255,255,255),
+}
 
-CHUNK = 30000
-parts = [b64[i:i+CHUNK] for i in range(0, len(b64), CHUNK)]
+local gui = Instance.new("ScreenGui")
+gui.Name = "FLOXIN_Cmp"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.Parent = parent
 
-CHUNK_BLOCK = "local _P = {\n"
-for p in parts:
-    CHUNK_BLOCK += "[==[" + p + "]==],\n"
-CHUNK_BLOCK += "}\n"
+local win = Instance.new("Frame", gui)
+win.Size = UDim2.new(0, 380, 0, 300)
+win.Position = UDim2.new(0.5, -190, 0.5, -150)
+win.BackgroundColor3 = Theme.Main1
+win.BorderSizePixel = 0
+win.Draggable = true
+Instance.new("UICorner", win).CornerRadius = UDim.new(0, 4)
+local st = Instance.new("UIStroke", win); st.Color = Theme.Outline1
 
-OUT = '-- DEX V FLOXIN · debug build\n' + CHUNK_BLOCK + r'''
+local bar = Instance.new("Frame", win)
+bar.Size = UDim2.new(1, 0, 0, 20)
+bar.BackgroundColor3 = Theme.Main2
+bar.BorderSizePixel = 0
+Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 4)
 
--- ========== DEBUG GUI ==========
-local _gui = Instance.new("ScreenGui")
-_gui.Name = "FLOXIN_Debug"
-_gui.ResetOnSpawn = false
-_gui.IgnoreGuiInset = true
-_gui.DisplayOrder = 999999
-pcall(function() _gui.Parent = game:GetService("CoreGui") end)
-if not _gui.Parent then _gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
+local title = Instance.new("TextLabel", bar)
+title.Size = UDim2.new(1, -20, 1, 0)
+title.Position = UDim2.new(0, 5, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "FLOXIN · Compare"
+title.TextColor3 = Theme.Text
+title.Font = Enum.Font.SourceSans
+title.TextSize = 14
+title.TextXAlignment = Enum.TextXAlignment.Left
 
-local _win = Instance.new("Frame", _gui)
-_win.Size = UDim2.new(0, 340, 0, 260)
-_win.Position = UDim2.new(0, 10, 0, 60)
-_win.BackgroundColor3 = Color3.fromRGB(15, 8, 25)
-_win.BorderSizePixel = 0
-_win.Draggable = true
-Instance.new("UICorner", _win).CornerRadius = UDim.new(0, 10)
-local _st = Instance.new("UIStroke", _win)
-_st.Color = Color3.fromRGB(180, 100, 255); _st.Thickness = 2
+local closeBtn = Instance.new("TextButton", bar)
+closeBtn.Size = UDim2.new(0, 16, 0, 16)
+closeBtn.Position = UDim2.new(1, -20, 0, 2)
+closeBtn.BackgroundTransparency = 1
+closeBtn.Text = "\\226\\156\\149"
+closeBtn.TextColor3 = Theme.Text
+closeBtn.Font = Enum.Font.SourceSans
+closeBtn.TextSize = 14
+closeBtn.BorderSizePixel = 0
+closeBtn.AutoButtonColor = false
+closeBtn.MouseEnter:Connect(function() closeBtn.BackgroundTransparency = 0 end)
+closeBtn.MouseLeave:Connect(function() closeBtn.BackgroundTransparency = 1 end)
+closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
 
-local _title = Instance.new("TextLabel", _win)
-_title.Size = UDim2.new(1, -20, 0, 24)
-_title.Position = UDim2.new(0, 10, 0, 6)
-_title.BackgroundTransparency = 1
-_title.Text = "FLOXIN · Debug"
-_title.TextColor3 = Color3.fromRGB(200, 150, 255)
-_title.Font = Enum.Font.GothamBold
-_title.TextSize = 14
-_title.TextXAlignment = Enum.TextXAlignment.Left
+local scroll = Instance.new("ScrollingFrame", win)
+scroll.Size = UDim2.new(1, -8, 1, -28)
+scroll.Position = UDim2.new(0, 4, 0, 24)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 4
+scroll.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
+scroll.CanvasSize = UDim2.new(0,0,0,0)
 
-local _log = Instance.new("ScrollingFrame", _win)
-_log.Size = UDim2.new(1, -20, 1, -40)
-_log.Position = UDim2.new(0, 10, 0, 32)
-_log.BackgroundColor3 = Color3.fromRGB(25, 15, 45)
-_log.BorderSizePixel = 0
-_log.ScrollBarThickness = 5
-_log.ScrollBarImageColor3 = Color3.fromRGB(180, 100, 255)
-_log.CanvasSize = UDim2.new(0,0,0,0)
-Instance.new("UICorner", _log).CornerRadius = UDim.new(0, 6)
-
-local _lay = Instance.new("UIListLayout", _log)
-_lay.Padding = UDim.new(0, 2)
-_lay.SortOrder = Enum.SortOrder.LayoutOrder
-_lay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    _log.CanvasSize = UDim2.new(0,0,0, _lay.AbsoluteContentSize.Y + 8)
+local lay = Instance.new("UIListLayout", scroll)
+lay.Padding = UDim.new(0, 2)
+lay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    scroll.CanvasSize = UDim2.new(0,0,0, lay.AbsoluteContentSize.Y + 6)
 end)
 
-local function _L(t, c)
-    local l = Instance.new("TextLabel", _log)
-    l.Size = UDim2.new(1, -8, 0, 0)
+local function log(t, c)
+    local l = Instance.new("TextLabel", scroll)
+    l.Size = UDim2.new(1, -6, 0, 0)
     l.AutomaticSize = Enum.AutomaticSize.Y
     l.BackgroundTransparency = 1
     l.Text = t
-    l.TextColor3 = c or Color3.fromRGB(220, 220, 230)
-    l.Font = Enum.Font.Code
-    l.TextSize = 11
+    l.TextColor3 = c or Theme.Text
+    l.Font = Enum.Font.SourceSans
+    l.TextSize = 12
     l.TextXAlignment = Enum.TextXAlignment.Left
     l.TextWrapped = true
 end
 
-_L("start", Color3.fromRGB(200, 150, 255))
-_L("chunks: " .. #_P)
+local function hash(s)
+    -- djb2
+    local h = 5381
+    for i = 1, #s do
+        h = ((h * 33) + s:byte(i)) % 0x100000000
+    end
+    return string.format("%08X", h)
+end
 
--- join
-local _b64 = table.concat(_P)
-_P = nil
-_L("joined: " .. #_b64 .. " bytes")
+local function hexOf(s, n)
+    local out = {}
+    for i = 1, math.min(n, #s) do
+        out[#out+1] = string.format("%02X", s:byte(i))
+    end
+    return table.concat(out, " ")
+end
 
--- base64 decode
-local _ok1, _err1 = pcall(function()
+task.spawn(function()
+    log("Fetching RAW...", Color3.fromRGB(180,180,220))
+    local rawUrl = "https://raw.githubusercontent.com/FL0XIN/FLOXIN-DEX-ROBLOX/refs/heads/main/dex_raw.lua?v=" .. tostring(math.random(1e6))
+    local ok1, raw = pcall(function() return game:HttpGet(rawUrl) end)
+    if not ok1 or not raw then log("raw fetch failed"); return end
+    log("RAW size: " .. #raw)
+    log("RAW hash: " .. hash(raw), Color3.fromRGB(100,220,130))
+    log("RAW first 20 hex: " .. hexOf(raw, 20))
+    log("RAW last 20 hex: " .. hexOf(raw:sub(-20), 20))
+    log("")
+
+    log("Fetching ENCODED...", Color3.fromRGB(180,180,220))
+    local encUrl = "https://raw.githubusercontent.com/FL0XIN/FLOXIN-DEX-ROBLOX/refs/heads/main/dex.lua?v=" .. tostring(math.random(1e6))
+    local ok2, enc = pcall(function() return game:HttpGet(encUrl) end)
+    if not ok2 or not enc then log("enc fetch failed"); return end
+    log("ENC size: " .. #enc)
+    log("")
+
+    log("Extracting payload chunks...", Color3.fromRGB(180,180,220))
+    local chunks = {}
+    for chunk in enc:gmatch("%[==%[(.-)%]==%]") do
+        table.insert(chunks, chunk)
+    end
+    log("chunks: " .. #chunks)
+
+    local b64 = table.concat(chunks)
+    log("joined b64: " .. #b64)
+
+    log("Base64 decode...", Color3.fromRGB(180,180,220))
     local m = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local l = {}
     for i = 1, 64 do l[m:byte(i)] = i - 1 end
-    _b64 = _b64:gsub("[^" .. m .. "=]", ""):gsub("=", "")
+    local clean = b64:gsub("[^" .. m .. "=]", ""):gsub("=", "")
+    log("b64 after gsub: " .. #clean .. " (was " .. #b64 .. ")")
+
     local o, a, n = {}, 0, 0
-    for i = 1, #_b64 do
-        local c = l[_b64:byte(i)]
+    for i = 1, #clean do
+        local c = l[clean:byte(i)]
         if c then
             a = a * 64 + c
             n = n + 6
@@ -102,45 +149,43 @@ local _ok1, _err1 = pcall(function()
             end
         end
     end
-    _b64 = table.concat(o)
-end)
-_L("b64 decode: " .. (_ok1 and ("ok " .. #_b64) or ("FAIL " .. tostring(_err1))),
-    _ok1 and Color3.fromRGB(120,230,140) or Color3.fromRGB(255,100,110))
+    local xored = table.concat(o)
+    log("decoded b64: " .. #xored)
 
-if not _ok1 then return end
-
--- xor
-local _K = "FLOXIN_FLAUX_2026_SECRET_KEY_v1"
-local _ok2, _err2 = pcall(function()
+    log("XOR...", Color3.fromRGB(180,180,220))
+    local K = "FLOXIN_FLAUX_2026_SECRET_KEY_v1"
     local out = {}
-    local kl = #_K
-    for i = 1, #_b64 do
-        out[i] = string.char(bit32.bxor(_b64:byte(i), _K:byte(((i - 1) % kl) + 1)))
+    local kl = #K
+    for i = 1, #xored do
+        out[i] = string.char(bit32.bxor(xored:byte(i), K:byte(((i - 1) % kl) + 1)))
     end
-    _b64 = table.concat(out)
+    local decoded = table.concat(out)
+    log("decoded final: " .. #decoded)
+    log("")
+    log("=== COMPARE ===", Color3.fromRGB(255,210,100))
+    log("RAW size : " .. #raw, Color3.fromRGB(180,180,220))
+    log("DEC size : " .. #decoded, Color3.fromRGB(180,180,220))
+    log("RAW hash : " .. hash(raw), Color3.fromRGB(100,220,130))
+    log("DEC hash : " .. hash(decoded), Color3.fromRGB(100,220,130))
+    log("")
+    log("RAW first 20 hex: " .. hexOf(raw, 20))
+    log("DEC first 20 hex: " .. hexOf(decoded, 20))
+    log("")
+    log("RAW last 20 hex: " .. hexOf(raw:sub(-20), 20))
+    log("DEC last 20 hex: " .. hexOf(decoded:sub(-20), 20))
+    log("")
+    if raw == decoded then
+        log("MATCH! decode is perfect.", Color3.fromRGB(100,220,130))
+        log("=> problem is loadstring itself.", Color3.fromRGB(255,210,100))
+    else
+        log("MISMATCH! decode is corrupting bytes.", Color3.fromRGB(255,100,110))
+    end
+    log("")
+    log("DONE - screenshot", Color3.fromRGB(255,210,100))
 end)
-_L("xor: " .. (_ok2 and ("ok " .. #_b64) or ("FAIL " .. tostring(_err2))),
-    _ok2 and Color3.fromRGB(120,230,140) or Color3.fromRGB(255,100,110))
-
-if not _ok2 then return end
-
--- loadstring
-_L("loadstring...")
-local _fn, _err3 = loadstring(_b64, "@FLOXIN")
-_L("loadstring: " .. (_fn and "OK" or ("FAIL " .. tostring(_err3):sub(1,120))),
-    _fn and Color3.fromRGB(120,230,140) or Color3.fromRGB(255,100,110))
-
-if not _fn then return end
-
--- run
-_L("running...")
-local _rok, _rerr = xpcall(_fn, function(e) return tostring(e) .. "\n" .. debug.traceback() end)
-_L("run: " .. (_rok and "SUCCESS" or ("ERROR: " .. tostring(_rerr):sub(1,200))),
-    _rok and Color3.fromRGB(120,230,140) or Color3.fromRGB(255,100,110))
 '''
 
 with open('dex.lua', 'w', encoding='utf-8') as f:
     f.write(OUT)
 
-print("FINAL:", os.path.getsize('dex.lua'))
-print("SUCCESS")
+print("OK")
