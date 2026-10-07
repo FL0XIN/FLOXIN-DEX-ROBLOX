@@ -334,25 +334,27 @@ local function makeBtn(parent, text, color, cb, w, x, y)
     return b
 end
 
--- CONSOLE
+-- CONSOLE (real code editor via Lib.CodeFrame)
 local function buildConsole(parent)
     local banner = Instance.new("TextLabel", parent)
-    banner.Size = UDim2.new(1, -8, 0, 32)
+    banner.Size = UDim2.new(1, -8, 0, 26)
     banner.Position = UDim2.new(0, 4, 0, 2)
-    banner.BackgroundColor3 = Color3.fromRGB(45,25,25)
-    banner.Text = "🔒 Sandboxed · no external requests · no data exfil · local only"
-    banner.TextColor3 = Color3.fromRGB(255,180,180)
+    banner.BackgroundColor3 = Settings.Theme.Main2
+    banner.Text = "Sandbox · no external requests · no data exfil · local only"
+    banner.TextColor3 = Settings.Theme.Text
+    banner.TextTransparency = 0.15
     banner.Font = Enum.Font.SourceSans
-    banner.TextSize = 10
+    banner.TextSize = 11
     banner.TextWrapped = true
     banner.TextXAlignment = Enum.TextXAlignment.Left
     banner.TextYAlignment = Enum.TextYAlignment.Center
     Instance.new("UICorner", banner).CornerRadius = UDim.new(0, 5)
 
+    -- log area
     local out = Instance.new("ScrollingFrame", parent)
-    out.Size = UDim2.new(1, -8, 1, -108)
-    out.Position = UDim2.new(0, 4, 0, 38)
-    out.BackgroundColor3 = Color3.fromRGB(20,20,24)
+    out.Size = UDim2.new(1, -8, 1, -400)
+    out.Position = UDim2.new(0, 4, 0, 32)
+    out.BackgroundColor3 = Settings.Theme.Main1
     out.BorderSizePixel = 0
     out.ScrollBarThickness = 5
     out.ScrollBarImageColor3 = Color3.fromRGB(70,70,70)
@@ -385,50 +387,53 @@ local function buildConsole(parent)
     Editor.RefreshConsole = refresh
     refresh()
 
-    local bar = Instance.new("Frame", parent)
-    bar.Size = UDim2.new(1, -8, 0, 64)
-    bar.Position = UDim2.new(0, 4, 1, -68)
-    bar.BackgroundTransparency = 1
+    -- code editor (Lib.CodeFrame)
+    local editorHolder = Instance.new("Frame", parent)
+    editorHolder.Size = UDim2.new(1, -8, 0, 260)
+    editorHolder.Position = UDim2.new(0, 4, 1, -332)
+    editorHolder.BackgroundColor3 = Settings.Theme.Main1
+    editorHolder.BorderSizePixel = 0
+    Instance.new("UICorner", editorHolder).CornerRadius = UDim.new(0, 5)
 
-    local input = Instance.new("TextBox", bar)
-    input.Size = UDim2.new(1, 0, 0, 30)
-    input.BackgroundColor3 = Color3.fromRGB(38,38,42)
-    input.BorderSizePixel = 0
-    input.Text = ""
-    input.PlaceholderText = "type Lua · enter to run"
-    input.PlaceholderColor3 = Color3.fromRGB(130,130,140)
-    input.TextColor3 = Color3.fromRGB(230,230,230)
-    input.Font = Enum.Font.Code
-    input.TextSize = 12
-    input.ClearTextOnFocus = false
-    input.TextXAlignment = Enum.TextXAlignment.Left
-    Instance.new("UICorner", input).CornerRadius = UDim.new(0, 5)
+    local codeFrame = Lib.CodeFrame.new()
+    codeFrame.Frame.Position = UDim2.new(0, 0, 0, 0)
+    codeFrame.Frame.Size = UDim2.new(1, 0, 1, 0)
+    codeFrame.Frame.Parent = editorHolder
+    codeFrame:SetText("-- Editor · sandboxed Lua\n-- try: Apps.Browser.Window:Show()\nprint('hello')")
 
-    local row = Instance.new("Frame", bar)
-    row.Size = UDim2.new(1, 0, 0, 26)
-    row.Position = UDim2.new(0, 0, 0, 34)
+    -- buttons row
+    local row = Instance.new("Frame", parent)
+    row.Size = UDim2.new(1, -8, 0, 28)
+    row.Position = UDim2.new(0, 4, 1, -66)
     row.BackgroundTransparency = 1
 
-    local function run()
-        local c = input.Text
+    local function runCode()
+        local c = codeFrame:GetText()
         if c == "" then return end
         table.insert(history, c)
         historyIdx = #history + 1
-        input.Text = ""
         Editor:Run(c)
     end
 
-    makeBtn(row, "Run", Color3.fromRGB(11,90,175), run, 70, 0)
-    makeBtn(row, "Clear", Color3.fromRGB(80,50,50), function() Editor:Clear() end, 70, 76)
-    makeBtn(row, "▲", Color3.fromRGB(60,60,70), function()
-        if historyIdx > 1 then historyIdx = historyIdx - 1; input.Text = history[historyIdx] or "" end
-    end, 40, 152)
-    makeBtn(row, "▼", Color3.fromRGB(60,60,70), function()
-        if historyIdx < #history then historyIdx = historyIdx + 1; input.Text = history[historyIdx] or "" end
-    end, 40, 196)
-    makeBtn(row, "Save WS", Color3.fromRGB(40,120,70), function() Editor:SaveWorkspace() end, 80, 242)
+    makeBtn(row, "Run", Color3.fromRGB(11,90,175), runCode, 70, 0)
+    makeBtn(row, "Clear Log", Color3.fromRGB(80,50,50), function() Editor:Clear() end, 80, 76)
+    makeBtn(row, "Load Last", Color3.fromRGB(60,60,70), function()
+        if historyIdx > 1 then
+            historyIdx = historyIdx - 1
+            codeFrame:SetText(history[historyIdx] or "")
+        end
+    end, 80, 162)
+    makeBtn(row, "Save WS", Color3.fromRGB(40,120,70), function() Editor:SaveWorkspace() end, 80, 248)
 
-    input.FocusLost:Connect(function(enter) if enter then run() end end)
+    -- keyboard shortcut: Ctrl+Enter to run
+    game:GetService("UserInputService").InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.KeyCode == Enum.KeyCode.Return then
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.LeftControl) then
+                runCode()
+            end
+        end
+    end)
 end
 
 -- SNIPPETS
