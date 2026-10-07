@@ -1,4 +1,4 @@
--- FLOXIN · compare raw vs decoded
+-- FLOXIN · Compare + Copy
 local CoreGui = game:GetService("CoreGui")
 local parent = (gethui and select(2, pcall(gethui))) or CoreGui
 
@@ -16,14 +16,15 @@ gui.ResetOnSpawn = false
 gui.Parent = parent
 
 local win = Instance.new("Frame", gui)
-win.Size = UDim2.new(0, 380, 0, 300)
-win.Position = UDim2.new(0.5, -190, 0.5, -150)
+win.Size = UDim2.new(0, 400, 0, 340)
+win.Position = UDim2.new(0.5, -200, 0.5, -170)
 win.BackgroundColor3 = Theme.Main1
 win.BorderSizePixel = 0
 win.Draggable = true
 Instance.new("UICorner", win).CornerRadius = UDim.new(0, 4)
 local st = Instance.new("UIStroke", win); st.Color = Theme.Outline1
 
+-- title bar
 local bar = Instance.new("Frame", win)
 bar.Size = UDim2.new(1, 0, 0, 20)
 bar.BackgroundColor3 = Theme.Main2
@@ -31,7 +32,7 @@ bar.BorderSizePixel = 0
 Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 4)
 
 local title = Instance.new("TextLabel", bar)
-title.Size = UDim2.new(1, -20, 1, 0)
+title.Size = UDim2.new(1, -60, 1, 0)
 title.Position = UDim2.new(0, 5, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "FLOXIN · Compare"
@@ -40,6 +41,35 @@ title.Font = Enum.Font.SourceSans
 title.TextSize = 14
 title.TextXAlignment = Enum.TextXAlignment.Left
 
+-- COPY button
+local copyBtn = Instance.new("TextButton", bar)
+copyBtn.Size = UDim2.new(0, 40, 0, 16)
+copyBtn.Position = UDim2.new(1, -62, 0, 2)
+copyBtn.BackgroundColor3 = Color3.fromRGB(60,90,140)
+copyBtn.Text = "Copy"
+copyBtn.TextColor3 = Theme.Text
+copyBtn.Font = Enum.Font.SourceSansBold
+copyBtn.TextSize = 12
+copyBtn.BorderSizePixel = 0
+Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 3)
+copyBtn.AutoButtonColor = false
+copyBtn.MouseButton1Click:Connect(function()
+    if setclipboard then
+        setclipboard(table.concat(_allLines, "\n"))
+        copyBtn.Text = "OK!"
+        task.wait(1)
+        copyBtn.Text = "Copy"
+    elseif toclipboard then
+        toclipboard(table.concat(_allLines, "\n"))
+        copyBtn.Text = "OK!"
+        task.wait(1)
+        copyBtn.Text = "Copy"
+    else
+        copyBtn.Text = "N/A"
+    end
+end)
+
+-- close X
 local closeBtn = Instance.new("TextButton", bar)
 closeBtn.Size = UDim2.new(0, 16, 0, 16)
 closeBtn.Position = UDim2.new(1, -20, 0, 2)
@@ -69,7 +99,10 @@ lay:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     scroll.CanvasSize = UDim2.new(0,0,0, lay.AbsoluteContentSize.Y + 6)
 end)
 
+_allLines = {}
+
 local function log(t, c)
+    table.insert(_allLines, t)
     local l = Instance.new("TextLabel", scroll)
     l.Size = UDim2.new(1, -6, 0, 0)
     l.AutomaticSize = Enum.AutomaticSize.Y
@@ -83,7 +116,6 @@ local function log(t, c)
 end
 
 local function hash(s)
-    -- djb2
     local h = 5381
     for i = 1, #s do
         h = ((h * 33) + s:byte(i)) % 0x100000000
@@ -101,7 +133,7 @@ end
 
 task.spawn(function()
     log("Fetching RAW...", Color3.fromRGB(180,180,220))
-    local rawUrl = "https://raw.githubusercontent.com/FL0XIN/FLOXIN-DEX-ROBLOX/refs/heads/main/dex_raw.lua?v=" .. tostring(math.random(1e6))
+    local rawUrl = "https://raw.githubusercontent.com/FL0XIN/FLOXIN-DEX-ROBLOX/refs/heads/main2/dex_raw.lua?v=" .. tostring(math.random(1e6))
     local ok1, raw = pcall(function() return game:HttpGet(rawUrl) end)
     if not ok1 or not raw then log("raw fetch failed"); return end
     log("RAW size: " .. #raw)
@@ -111,13 +143,13 @@ task.spawn(function()
     log("")
 
     log("Fetching ENCODED...", Color3.fromRGB(180,180,220))
-    local encUrl = "https://raw.githubusercontent.com/FL0XIN/FLOXIN-DEX-ROBLOX/refs/heads/main/dex.lua?v=" .. tostring(math.random(1e6))
+    local encUrl = "https://raw.githubusercontent.com/FL0XIN/FLOXIN-DEX-ROBLOX/refs/heads/main2/dex.lua?v=" .. tostring(math.random(1e6))
     local ok2, enc = pcall(function() return game:HttpGet(encUrl) end)
     if not ok2 or not enc then log("enc fetch failed"); return end
     log("ENC size: " .. #enc)
     log("")
 
-    log("Extracting payload chunks...", Color3.fromRGB(180,180,220))
+    log("Extracting chunks...", Color3.fromRGB(180,180,220))
     local chunks = {}
     for chunk in enc:gmatch("%[==%[(.-)%]==%]") do
         table.insert(chunks, chunk)
@@ -132,7 +164,7 @@ task.spawn(function()
     local l = {}
     for i = 1, 64 do l[m:byte(i)] = i - 1 end
     local clean = b64:gsub("[^" .. m .. "=]", ""):gsub("=", "")
-    log("b64 after gsub: " .. #clean .. " (was " .. #b64 .. ")")
+    log("clean b64: " .. #clean)
 
     local o, a, n = {}, 0, 0
     for i = 1, #clean do
@@ -147,7 +179,7 @@ task.spawn(function()
         end
     end
     local xored = table.concat(o)
-    log("decoded b64: " .. #xored)
+    log("b64 decoded: " .. #xored)
 
     log("XOR...", Color3.fromRGB(180,180,220))
     local K = "FLOXIN_FLAUX_2026_SECRET_KEY_v1"
@@ -157,26 +189,25 @@ task.spawn(function()
         out[i] = string.char(bit32.bxor(xored:byte(i), K:byte(((i - 1) % kl) + 1)))
     end
     local decoded = table.concat(out)
-    log("decoded final: " .. #decoded)
+    log("decoded: " .. #decoded)
     log("")
     log("=== COMPARE ===", Color3.fromRGB(255,210,100))
-    log("RAW size : " .. #raw, Color3.fromRGB(180,180,220))
-    log("DEC size : " .. #decoded, Color3.fromRGB(180,180,220))
-    log("RAW hash : " .. hash(raw), Color3.fromRGB(100,220,130))
-    log("DEC hash : " .. hash(decoded), Color3.fromRGB(100,220,130))
+    log("RAW : " .. #raw)
+    log("DEC : " .. #decoded)
+    log("RAW hash: " .. hash(raw), Color3.fromRGB(100,220,130))
+    log("DEC hash: " .. hash(decoded), Color3.fromRGB(100,220,130))
     log("")
-    log("RAW first 20 hex: " .. hexOf(raw, 20))
-    log("DEC first 20 hex: " .. hexOf(decoded, 20))
+    log("RAW first hex: " .. hexOf(raw, 20))
+    log("DEC first hex: " .. hexOf(decoded, 20))
     log("")
-    log("RAW last 20 hex: " .. hexOf(raw:sub(-20), 20))
-    log("DEC last 20 hex: " .. hexOf(decoded:sub(-20), 20))
+    log("RAW last hex: " .. hexOf(raw:sub(-20), 20))
+    log("DEC last hex: " .. hexOf(decoded:sub(-20), 20))
     log("")
     if raw == decoded then
-        log("MATCH! decode is perfect.", Color3.fromRGB(100,220,130))
-        log("=> problem is loadstring itself.", Color3.fromRGB(255,210,100))
+        log("MATCH!", Color3.fromRGB(100,220,130))
     else
-        log("MISMATCH! decode is corrupting bytes.", Color3.fromRGB(255,100,110))
+        log("MISMATCH!", Color3.fromRGB(255,100,110))
     end
     log("")
-    log("DONE - screenshot", Color3.fromRGB(255,210,100))
+    log("DONE - tap Copy", Color3.fromRGB(255,210,100))
 end)
