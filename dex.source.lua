@@ -18868,7 +18868,7 @@ end
 		Main.FloxIcons = Main.FloxIcons or Lib.IconMap.new("rbxassetid://3926305904",900,900,36,36)
 		Main.CreateApp({Name = "Browser", IconMap = Main.FloxIcons, Icon = 242, Window = Browser.Window})
 		Main.CreateApp({Name = "Players Explorer", IconMap = Main.MiscIcons, Icon = "SelectChildren", Window = PlayersExplorer.Window})
-		Main.CreateApp({Name = "Editor", IconMap = Main.MiscIcons, Icon = "ViewScript", Window = Editor.Window})
+		Main.CreateApp({Name = "Editor", IconMap = Main.FloxIcons, Icon = 63, Window = Editor.Window})
 		Main.CreateApp({Name = "Model Editor", IconMap = Main.MiscIcons, Icon = "InsertObject", Window = ModelEditor.Window})
 		Main.CreateApp({Name = "Developer Scripts", IconMap = Main.MiscIcons, Icon = "Reference", Window = DeveloperScripts.Window})
 
