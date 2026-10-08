@@ -1565,80 +1565,10 @@ local safeHttpService = setmetatable({}, {
 })
 
 -- wrap game to intercept HttpGet
-local safeGame = setmetatable({}, {
-    __index = function(_, key)
-        if key == "HttpGet" or key == "HttpGetAsync" then
-            return makeBlocked("game:"..key)
-        end
-        return game[key]
-    end,
-    __newindex = function(_, k, v) game[k] = v end,
-})
+-- FLOXIN: safeGame is game directly (source is scanned in Editor:Run)
+local safeGame = game
 
--- wrap a table to remove network-ish functions
-local function stripNet(tbl)
-    if type(tbl) ~= "table" then return tbl end
-    local out = {}
-    for k, v in pairs(tbl) do
-        if type(v) ~= "function" then
-            out[k] = v
-        else
-            local n = tostring(k)
-            if n == "request" or n == "http_request" or n == "HttpGet" or n == "HttpGetAsync"
-               or n:lower():find("http") and not n:lower():find("jsond") then
-                out[k] = makeBlocked("."..n)
-            else
-                out[k] = v
-            end
-        end
-    end
-    return out
-end
 
--- safe loadstring: only allow non-url source
-local realLoadstring = loadstring
-local function safeLoadstring(src, chunkname)
-    if type(src) ~= "string" then
-        error("[sandbox] loadstring expects a string", 2)
-    end
-    if #src > 200000 then
-        error("[sandbox] loadstring source too large (max 200KB)", 2)
-    end
-    -- block if source contains a URL that looks like it will HttpGet
-    local lowered = src:lower()
-    if lowered:find("game:httpget") or lowered:find("httpgetasync")
-       or lowered:find("httpservice:getasync") or lowered:find("httpservice:postasync")
-       or lowered:find("httpservice:requestasync") or lowered:find("http_request%(") then
-        error("[sandbox] loadstring contains network call", 2)
-    end
-    if lowered:find("request%s*%(%s*{%s*url") or lowered:find("syn%.request")
-       or lowered:find("http%.request") or lowered:find("https?://[^%s\"']+%.lua") then
-        error("[sandbox] loadstring contains external request", 2)
-    end
-    local fn, err = realLoadstring(src, chunkname or "@FLOXIN_EDITOR")
-    return fn, err
-end
-
--- safe writefile: only allow floxin_*.json / .log / .txt
-local realWritefile = writefile
-local function safeWritefile(path, data)
-    if type(path) ~= "string" then error("[sandbox] writefile: bad path", 2) end
-    local p = path:lower()
-    if not p:match("^floxin_") and not p:match("^/floxin_") then
-        error("[sandbox] writefile: only 'floxin_*' files allowed", 2)
-    end
-    if p:match("%.lua$") or p:match("%.rbxm$") or p:match("%.rbxl$") then
-        error("[sandbox] writefile: cannot write script/binary files from Editor", 2)
-    end
-    if type(data) == "string" and #data > 5 * 1024 * 1024 then
-        error("[sandbox] writefile: data too large (max 5MB)", 2)
-    end
-    if realWritefile then
-        return realWritefile(path, data)
-    end
-end
-
-Editor.SafeGame = safeGame
 
 -- ============ SANDBOX ============
 local SANDBOX = setmetatable({
