@@ -19027,4 +19027,44 @@ end)()
 -- Start
 Main.Init()
 
+-- FLOXIN Mobile Keyboard Fix
+task.delay(5, function()
+local UIS = game:GetService("UserInputService")
+if not UIS.TouchEnabled then return end
+print("[FLOXIN] mobile keyboard fix active")
+local function fixTB(tb)
+pcall(function()
+tb.Active = true
+tb.TextEditable = true
+tb.Selectable = true
+tb.ManualFocusRelease = true
+if tb.Name == "EditBox" and not tb.Visible then
+tb.Visible = true
+tb.BackgroundTransparency = 1
+tb.TextTransparency = 1
+end
+end)
+end
+task.spawn(function()
+while true do
+task.wait(3)
+local roots = {}
+pcall(function() table.insert(roots, game:GetService("CoreGui")) end)
+if gethui then
+local ok, h = pcall(gethui)
+if ok and h and typeof(h) == "Instance" then table.insert(roots, h) end
+end
+local pg = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
+if pg then table.insert(roots, pg) end
+for _, root in ipairs(roots) do
+pcall(function()
+for _, tb in ipairs(root:GetDescendants()) do
+if tb:IsA("TextBox") then fixTB(tb) end
+end
+end)
+end
+end
+end)
+end)
+
 --for i,v in pairs(Main.MissingEnv) do print(i,v) end
