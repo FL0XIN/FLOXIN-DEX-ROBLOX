@@ -1949,11 +1949,15 @@ local function buildConsole(parent)
     Instance.new("UICorner", banner).CornerRadius = UDim.new(0, 5)
 
     local out = Instance.new("ScrollingFrame", parent)
-    out.BackgroundColor3 = Settings.Theme.Main1
+    out.BackgroundColor3 = Color3.fromRGB(18,18,22)
     out.BorderSizePixel = 0
-    out.ScrollBarThickness = 5
-    out.ScrollBarImageColor3 = Settings.Theme.Outline1
+    out.ScrollBarThickness = 8
+    out.ScrollBarImageColor3 = Color3.fromRGB(120,120,120)
+    out.ScrollBarImageTransparency = 0
     out.CanvasSize = UDim2.new(0,0,0,0)
+    out.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    out.ScrollingDirection = Enum.ScrollingDirection.Y
+    out.Active = true
     Instance.new("UICorner", out).CornerRadius = UDim.new(0, 5)
     local lay = Instance.new("UIListLayout", out)
     lay.Padding = UDim.new(0, 2)
@@ -2052,7 +2056,28 @@ local function buildConsole(parent)
         local t = codeFrame:GetText()
         if setclipboard then pcall(setclipboard, t) end
     end, 44)
-    makeMBtn("Clear", function() codeFrame:SetText("") end, 46)
+    makeMBtn("Copy Log", function()
+        local lines = {}
+        for _, item in ipairs(logBuffer) do
+            table.insert(lines, item.text)
+        end
+        local txt = table.concat(lines, "\n")
+        local okc = false
+        if env and env.setclipboard then pcall(function() env.setclipboard(txt) okc = true end) end
+        if not okc and setclipboard then pcall(function() setclipboard(txt) okc = true end) end
+        if not okc and toclipboard then pcall(function() toclipboard(txt) okc = true end) end
+        if okc then
+            Editor:Log("[copied "..#txt.." bytes]", Color3.fromRGB(120,230,140))
+        else
+            Editor:Log("[copy failed]", Color3.fromRGB(255,100,110))
+        end
+    end, 74)
+
+    makeMBtn("Clear Log", function()
+        Editor:Clear()
+    end, 74)
+
+    makeMBtn("Clear", function() codeFrame:SetText("") end, 50)
 
     makeBtn(row, "Run", Settings.Theme.ListSelection, runCode, 70, 0)
     makeBtn(row, "Clr Log", Settings.Theme.Button, function() Editor:Clear() end, 70, 76)
