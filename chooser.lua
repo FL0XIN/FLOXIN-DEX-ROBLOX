@@ -73,16 +73,16 @@ print("[FLOXIN] session: "..SESSION.id)
 local VERSIONS = {
     {
         name = "Standard",
-        hash = "fce0e5a",
+        hash = "5c22fde",
         size = "672 KB",
-        features = "All modules · Explorer, Browser, Editor, Dev Scripts, Players",
-        target = "PC · High-end mobile",
+        features = "All modules · Explorer, Browser, Editor, Dev Scripts, Players, Model Editor · Material Icons · Mobile KB",
+        target = "PC · High-end mobile · Recommended",
     },
     {
         name = "Lite",
         hash = "0696e98",
         size = "537 KB",
-        features = "Core tools · Explorer, Properties, Console, Notepad",
+        features = "Core tools · Explorer, Properties, Console, Notepad, SaveInstance, 3D Viewer, Bulk Copier",
         target = "Mid-tier mobile",
     },
     {
