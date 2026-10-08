@@ -18751,8 +18751,8 @@ Lib.ShowGui(sg)
 Main._AboutGui = sg
 
 local frame = Instance.new("Frame", sg)
-frame.Size = UDim2.new(0, 260, 0, 340)
-frame.Position = UDim2.new(0.5, -130, 0.5, -170)
+frame.Size = UDim2.new(0, 320, 0, 380)
+frame.Position = UDim2.new(0.5, -160, 0.5, -190)
 frame.BackgroundColor3 = Color3.fromRGB(45,45,45)
 frame.BorderSizePixel = 0
 frame.Active = true
@@ -18800,14 +18800,14 @@ add("Owner      : FLOXIN", 13, true)
 add("Architect  : FLAUX", 13, true)
 Y = Y + 6
 add("Features:", 13, true)
-add("  Explorer / Properties / Console", 12, false, Settings.Theme.Text)
-add("  Script Viewer / Notepad", 12, false, Settings.Theme.Text)
-add("  SaveInstance / Model Viewer", 12, false, Settings.Theme.Text)
-add("  Bulk Copier", 12, false, Settings.Theme.Text)
-add("  Browser (Web + Roblox)", 12, false, Settings.Theme.Text)
-add("  Players Explorer (edit values)", 12, false, Settings.Theme.Text)
-add("  Editor (sandbox + snippets)", 12, false, Settings.Theme.Text)
-add("  Developer Scripts (community)", 12, false, Settings.Theme.Text)
+add("  Explorer · Properties · Console", 11, false, Settings.Theme.Text)
+add("  Script Viewer · Notepad", 11, false, Settings.Theme.Text)
+add("  SaveInstance · Model Viewer", 11, false, Settings.Theme.Text)
+add("  Bulk Copier", 11, false, Settings.Theme.Text)
+add("  Browser · Web + Roblox", 11, false, Settings.Theme.Text)
+add("  Players Explorer · edit values", 11, false, Settings.Theme.Text)
+add("  Editor · sandbox + snippets", 11, false, Settings.Theme.Text)
+add("  Developer Scripts · community", 11, false, Settings.Theme.Text)
 Y = Y + 6
 add("Session: "..(_G.FLOXIN_SESSION and _G.FLOXIN_SESSION.id or "n/a"), 11, false, Color3.fromRGB(140,140,140))
 add("FLOXIN v12  ·  (c) 2026", 11, false, Color3.fromRGB(140,140,140))
